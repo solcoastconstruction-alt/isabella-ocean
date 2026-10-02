@@ -17,7 +17,8 @@ const SERIAL = 'emulator-5554';
 const PKG = 'app.isabella.mermaid.seeker';
 const OUT = path.join(__dirname, '../../.local/demo');
 const adb = (...a) => spawnSync(ADB, ['-s', SERIAL, ...a], { encoding: 'utf8' });
-const log = (s) => console.log(`${new Date().toISOString().slice(11, 19)}  ${s}`);
+let rec0 = 0;   // when the recording started: log lines carry their time in the video
+const log = (s) => console.log(`${new Date().toISOString().slice(11, 19)}${rec0 ? ` [video ${((Date.now() - rec0) / 1000).toFixed(1)}s]` : ''}  ${s}`);
 fs.mkdirSync(OUT, { recursive: true });
 
 let cdp, dpr = 1;
@@ -31,6 +32,15 @@ async function tap(selector, pause = 900) {
   adb('shell', 'input', 'tap', String(x), String(y));
   await sleep(pause);
 }
+// Tap until the app shows the expected result (a tap during a page slide can miss).
+async function tapUntil(selector, cond, what, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    await tap(selector, 400);
+    try { await cdp.waitFor(cond, 4000, what); return; } catch (e) { log(`no ${what} yet; tapping ${selector} again`); }
+  }
+  throw new Error(`no ${what} after ${tries} taps on ${selector}`);
+}
+const ASK = "document.getElementById('pwAsk').classList.contains('on')";
 async function hold(selector, ms) {
   const [x, y] = await at(selector);
   adb('shell', 'input', 'swipe', String(x), String(y), String(x), String(y), String(ms));
@@ -47,6 +57,7 @@ async function approveUntil(done, what, timeoutMs = 150000) {
       const m = xml.match(new RegExp(`text="${label}"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`));
       if (m) {
         const [x1, y1, x2, y2] = m.slice(1).map(Number);
+        log(`wallet (${what}): ${label} on screen`);
         await sleep(2200);   // let the viewer read the wallet's request
         adb('shell', 'input', 'tap', String((x1 + x2) >> 1), String((y1 + y2) >> 1));
         log(`wallet (${what}): tapped ${label}`);
@@ -70,7 +81,16 @@ async function gate() {
   await tap('#pwPad [data-k="ok"]', 600);
 }
 const mode = () => cdp.eval('__dbg.mode');
-async function toTitle() { for (let i = 0; i < 8 && (await mode()) !== 'title'; i++) { await cdp.eval('window.__back()'); await sleep(400); } }
+// Out of a level the way a player leaves it (pause, then home); back steps out of everything else.
+async function toTitle() {
+  for (let i = 0; i < 10; i++) {
+    const m = await mode();
+    if (m === 'title') return;
+    if (m === 'play') await tap('#pauseBtn', 1000);
+    else if (m === 'paused') await tap('#pauseHome', 1200);
+    else { await cdp.eval('window.__back()'); await sleep(400); }
+  }
+}
 async function toWorld2() {
   await toTitle(); await sleep(1200);
   await tap('#playBtn', 1800);
@@ -78,12 +98,16 @@ async function toWorld2() {
 }
 async function openPaywall() {
   await toWorld2();
-  await tap('#grid .lvl:nth-child(1)', 1800);   // Level 11: "ask a grown-up"
+  await tapUntil('#grid .lvl:nth-child(1)', ASK, 'ask-a-grown-up screen');   // Level 11 is locked
+  await sleep(1600);
   await tap('#pwAskGo', 500);
   await gate();
   await cdp.waitFor("document.getElementById('pwPay').classList.contains('on')", 5000, 'the unlock screen');
 }
 const worldOpen = 'Paywall.worldOpen()';
+// The wallet checks the app's identity file within 3 s from its own process. Look the site up
+// first, so the emulator's shared DNS cache already holds it.
+const warmDns = () => cdp.eval(`fetch('https://isabellaocean-app.pages.dev/.well-known/assetlinks.json?w=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false)`);
 // The coins-and-confetti screen comes a few seconds after the unlock lands ("Checking with Solana").
 const YAY = "document.getElementById('pwYay').classList.contains('on')";
 async function celebration(ms) {
@@ -152,6 +176,7 @@ async function stopRecording() {
   await sleep(1500);
 
   startRecording();
+  rec0 = Date.now();
   await sleep(2500);
   log('title: the three games');
   await sleep(2500);
@@ -163,7 +188,8 @@ async function stopRecording() {
   log('World 1 (free)');
   await tap('#pgNext', 2500);
   log('World 2 (locked)');
-  await tap('#grid .lvl:nth-child(1)', 2200);
+  await tapUntil('#grid .lvl:nth-child(1)', ASK, 'ask-a-grown-up screen');
+  await sleep(2000);
   await tap('#pwAskGo', 500);
   await gate();
   await cdp.waitFor("!!document.querySelector('#pwPay [data-act=stake]')", 30000, 'the stake option');
@@ -171,7 +197,9 @@ async function stopRecording() {
   await sleep(5000);
 
   // 2. Stake 1 SOL.
+  await warmDns();
   await tap('#pwPay [data-act=stake]', 300);
+  log('tapped Stake 1 SOL');
   await approveUntil(worldOpen, 'stake');
   if (expectWallet) { const pk = await cdp.eval('Wallet.publicKey'); if (pk !== expectWallet) throw new Error(`connected ${pk}, expected ${expectWallet}`); }
   log('staked: World 2 is open');
@@ -190,33 +218,46 @@ async function stopRecording() {
     adb('shell', 'input', 'swipe', String(sx), String(Math.round(H * y1)), String(sx + 40), String(Math.round(H * y2)), '1800');
   }
   await sleep(800);
+  log('swam for a bit');
 
   // 4. Grown-ups: get the SOL back now. World 2 locks again.
   await toTitle(); await sleep(1500);
+  log('title');
   await tap('#parentBtn', 500);
   await gate();
   await cdp.waitFor("document.getElementById('pwManage').classList.contains('on')", 5000, 'the grown-ups screen');
+  log('grown-ups: checking');
   await cdp.waitFor("!!document.querySelector('#pwManage [data-act=exitNow]')", 45000, 'the exit buttons');
   log('grown-ups: Staked');
   await sleep(4000);
   await tap('#pwManage [data-act=exitNow]', 2500);
   await cdp.waitFor("document.getElementById('pwConfirm').classList.contains('on')", 5000, 'the confirm dialog');
+  await warmDns();
   await tap('#pwCfYes', 300);
+  log('confirmed: get my SOL back now');
   await approveUntil(`!${worldOpen} && !IsabellaEntitlement.status().unlocked`, 'exit');
+  log('exit sent: World 2 locked');
+  // The grown-ups screen finishes by itself once Solana confirms: "Your SOL is back".
+  await cdp.waitFor("!!document.querySelector('#pwManage [data-act=ok]')", 90000, 'the exit to finish');
   log('SOL back: World 2 locked again');
-  await sleep(4000);
+  await sleep(4500);
+  await tap('#pwManage [data-act=ok]', 1500);
 
   // 5. Pay once instead (devnet: 0.1 SOL to the merchant).
   await cdp.eval("['pwManage','pwPay','pwAsk'].forEach((id) => { const o = document.getElementById(id); if (o.classList.contains('on')) window.__back(); }), true");
   await sleep(800);
   await openPaywall();
   await cdp.waitFor("!!document.querySelector('#pwPay [data-act=buy]')", 30000, 'the pay option');
+  log('the unlock screen again');
   await sleep(2500);
   await tap('#pwPay [data-act=buy]', 300);
+  log('tapped Pay once');
   await cdp.waitFor("!!document.querySelector('#pwPay [data-act=pick]')", 60000, 'the token list');
   log('choose a token');
   await sleep(3500);
+  await warmDns();
   await tap('#pwPay [data-act=pick][data-i="0"]', 300);
+  log('picked a token');
   await approveUntil(worldOpen, 'buy');
   log('paid once: World 2 is open for good');
   await celebration(6000);
