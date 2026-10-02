@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Draws one moment of one level, for screenshots without a phone:
+     render.html?n=12&kind=wheel  (first obstacle of that kind)   render.html?n=20&win=1&crown=1 -->
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;overflow:hidden;background:#000}canvas{position:fixed;inset:0;width:100%;height:100%}</style>
+</head><body><canvas id="c"></canvas>
+<script src="../web/core.js"></script><script src="../web/render.js"></script>
+<script>
+const C = IsabellaCore, R = IsabellaRender, q = new URLSearchParams(location.search);
+const n = +(q.get('n') || 11), kind = q.get('kind');
+R.init(document.getElementById('c')); R.setCrown(q.get('crown') === '1');
+const g = new C.Game(n, R.VW);
+g.sx = 230; g.y = +(q.get('y') || 270);
+let t = +(q.get('t') || 8);
+if (kind) {
+  const o = g.lev.obs.find((o) => o.k === kind);
+  if (kind === 'fish') t = o.t0 + 1.5;
+  else {
+    t = Math.max(0, (o.x - 760) / g.speed);
+    if (kind === 'anchor') o.ph = ((((0.42 - t / o.per) % 1) + 1) % 1); // show it mid-way down (screenshot only)
+  }
+}
+g.t = t;
+let clock = 3.3;
+if (q.get('win')) {
+  g.t = g.camStop / g.speed + 0.3; g.hasKey = true; g.state = 'win'; g.st = 0; g.sx = g.lev.chestX - g.cam - 10; g.y = C.SAND - 175;
+  R.fountain(g.lev.chestX, C.SAND - 70, 160);
+  for (let i = 0; i < 50; i++) { g.st += 1 / 60; if (i % 10 === 0) R.fountain(g.lev.chestX, C.SAND - 60, 18); R.drawGame(g, 1 / 60, (clock += 1 / 60), {}); }
+}
+if (q.get('attract')) R.drawAttract(clock, 0, +(q.get('theme') || 1));
+else { R.drawGame(g, 1 / 60, clock, {}); R.drawHUD(g, clock, false); }
+</script></body></html>

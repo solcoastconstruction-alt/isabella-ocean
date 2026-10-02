@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Store flavor only (merged over src/main). The family APK keeps no network permission. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The page talks to Solana RPC (devnet for the demo). The MWA client library also declares
+         INTERNET, ACCESS_NETWORK_STATE and the solana-wallet <queries> entry that available() needs. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

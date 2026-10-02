@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A rainbow mermaid tail with bubbles and a gold sparkle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group>
+        <clip-path android:pathData="M54,24 C63,24 67,34 65,47 C63,59 58,67 56,73 L52,73 C50,67 45,59 43,47 C41,34 45,24 54,24 Z M54,71 C60,73 72,75 81,68 C77,80 66,86 54,79 C42,86 31,80 27,68 C36,75 48,73 54,71 Z" />
+        <path android:fillColor="#FF4D6D" android:pathData="M20,20 h68 v12 h-68 z" />
+        <path android:fillColor="#FF9F43" android:pathData="M20,32 h68 v9 h-68 z" />
+        <path android:fillColor="#FFD93D" android:pathData="M20,41 h68 v9 h-68 z" />
+        <path android:fillColor="#5AD17A" android:pathData="M20,50 h68 v9 h-68 z" />
+        <path android:fillColor="#4CC9F0" android:pathData="M20,59 h68 v9 h-68 z" />
+        <path android:fillColor="#C86BFA" android:pathData="M20,68 h68 v20 h-68 z" />
+    </group>
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.6" android:fillColor="#00000000"
+        android:pathData="M74,30 a4,4 0 1,0 0.01,0 M80,22 a2.6,2.6 0 1,0 0.01,0 M70,20 a2,2 0 1,0 0.01,0" />
+    <path android:fillColor="#FFE066"
+        android:pathData="M34,30 L36,35 L41,36 L36,38 L34,43 L32,38 L27,36 L32,35 Z" />
+</vector>

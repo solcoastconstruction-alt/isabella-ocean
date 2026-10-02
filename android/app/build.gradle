@@ -1,0 +1,52 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'app.isabella.mermaid'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'app.isabella.mermaid'
+        minSdk 26
+        targetSdk 36
+        versionCode 4
+        versionName "2.2"
+    }
+    buildFeatures { buildConfig true } // BuildConfig.DEBUG gates the debug-only test pages
+
+    flavorDimensions 'edition'
+    productFlavors {
+        // Her app as it always was: same id, so it updates the copy already installed. No wallet.
+        family {
+            dimension 'edition'
+            applicationId 'app.isabella.mermaid'
+        }
+        // The Seeker / dApp Store build: paywall plus the Mobile Wallet Adapter bridge (window.IsabellaWallet).
+        store {
+            dimension 'edition'
+            applicationId 'app.isabella.mermaid.seeker'
+        }
+    }
+
+    // The game itself lives in ../../web and is packed as the app's assets.
+    // src/<flavor>/assets/flavor.js wins over a same-named web/flavor.js: flavor source sets
+    // take priority over main when assets are merged. src/debug/assets holds debug-only pages.
+    sourceSets { main { assets.srcDirs = ['../../web'] } }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Mobile Wallet Adapter, pure-Java client (store flavor only; the family APK stays wallet-free).
+    // Its POM also lists kotlin-stdlib 2.4.10, but neither the clientlib nor -common references a single
+    // kotlin.* class (checked with javap), and AGP 8.9's lint cannot read 2.4 metadata. Leave it out.
+    storeImplementation('com.solanamobile:mobile-wallet-adapter-clientlib:2.2.0') {
+        exclude group: 'org.jetbrains.kotlin'
+    }
+}
+
+// MWA 2.2.0 (and its -common) was built with AGP 9 against API 37, which stamps minCompileSdk=37 into
+// its AAR metadata. Both are plain Java with no resources; the newest platform call is Set.of (API 30),
+// which D8 backports for minSdk 26. Compiling against 36 is safe, so skip only that metadata check,
+// only for the store variants. The family build is untouched.
+tasks.matching { it.name ==~ /checkStore\w*AarMetadata/ }.configureEach { enabled = false }
