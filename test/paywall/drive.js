@@ -44,8 +44,10 @@ const mode = () => ev('__dbg.mode');
 const worldOpen = () => ev('Paywall.worldOpen()');
 
 // Load the game fresh with a given save (and flavor) set before any of its scripts run.
-async function open(query, { save = WORLD1_DONE, family = false } = {}) {
-  const src = `try { localStorage.setItem('isabella.save', ${JSON.stringify(JSON.stringify(save))}); } catch (e) {}` + (family ? "window.IsabellaFlavor = 'family';" : '');
+async function open(query, { save = WORLD1_DONE, family = false, noPayments = false } = {}) {
+  const src = `try { localStorage.setItem('isabella.save', ${JSON.stringify(JSON.stringify(save))}); } catch (e) {}` + (family ? "window.IsabellaFlavor = 'family';" : '')
+    // Simulate the payment modules being absent: their scripts still run, but their globals never land.
+    + (noPayments ? "['IsabellaPay','IsabellaEntitlement','Wallet'].forEach((k) => Object.defineProperty(window, k, { get() {}, set() {}, configurable: false }));" : '');
   const { identifier } = await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: src });
   await cdp.navigate(`${PAGE}${query ? `?${query}` : ''}`);
   await cdp.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
@@ -399,7 +401,7 @@ async function nextAfterTen() {
 
 async function unavailable() {
   console.log('\n# No payment modules (no ?mockpay): "Unlock unavailable", the game still works');
-  await open('');
+  await open('', { noPayments: true });
   check(!(await ev('!!(window.IsabellaPay || window.IsabellaEntitlement || window.Wallet)')), 'no IsabellaPay / IsabellaEntitlement / Wallet on the page');
   await cdp.tap('#playBtn');
   check((await ev("document.querySelectorAll('#grid .paylock').length")) === 10, 'World 2 stays padlocked (fails closed)');

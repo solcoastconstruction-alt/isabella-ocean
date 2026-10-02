@@ -1,0 +1,30 @@
+{
+  "name": "isabella-payments-tools",
+  "private": true,
+  "description": "Builds web/vendor/solana.js (window.SolanaLib) and runs the payments tests",
+  "scripts": {
+    "bundle": "node bundle.mjs",
+    "test": "node --test --test-concurrency=1 \"../test/payments/*.test.mjs\"",
+    "test:unit": "node --test ../test/payments/unit.test.mjs",
+    "test:devnet": "node --test ../test/payments/devnet.test.mjs",
+    "test:devnet-sim": "node --test ../test/payments/devnet-sim.test.mjs",
+    "test:jupiter": "node --test ../test/payments/jupiter.test.mjs",
+    "test:smoke": "node --test ../test/payments/smoke.test.mjs",
+    "mutation": "node mutation-check.mjs"
+  },
+  "dependencies": {
+    "@noble/hashes": "1.8.0",
+    "@solana/spl-stake-pool": "1.1.8",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0",
+    "bs58": "4.0.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "@solana/spl-stake-pool": {
+      "@solana/spl-token": "$@solana/spl-token"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payments smoke test</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px; background: #f5f7fa; color: #1b2733; }
+  pre { background: #fff; border: 1px solid #d6dde5; padding: 12px; white-space: pre-wrap; word-break: break-all; }
+</style>
+</head>
+<body>
+<h1>Payments smoke test</h1>
+<p>Loads the payments scripts in index.html order. Open with <code>?devwallet=1&amp;pool=…&amp;mint=…&amp;threshold=…</code> to use the devnet dev wallet against a given pool.</p>
+<pre id="out">loading…</pre>
+<script>window.IsabellaFlavor = 'store';</script>
+<script src="../../web/config.js"></script>
+<script>
+  // Test-only overrides from the URL (the app itself never reads these).
+  (function () {
+    const q = new URLSearchParams(location.search);
+    const c = window.IsabellaConfig;
+    if (q.get('pool')) c.stake.pool = q.get('pool');
+    if (q.get('mint')) c.stake.mint = q.get('mint');
+    if (q.get('programId')) c.stake.programId = q.get('programId');
+    if (q.get('threshold')) c.stake.unlockThreshold = Number(q.get('threshold'));
+    if (q.get('deposit')) c.stake.depositSol = Number(q.get('deposit'));
+    if (q.get('merchant')) c.merchant.wallet = q.get('merchant');
+  })();
+</script>
+<script src="../../web/vendor/solana.js"></script>
+<script src="../../web/wallet.js"></script>
+<script src="../../web/entitlement.js"></script>
+<script src="../../web/payments.js"></script>
+<script>
+  (function () {
+    const ok = !!(window.SolanaLib && window.Wallet && window.IsabellaEntitlement && window.IsabellaPay);
+    document.getElementById('out').textContent = JSON.stringify({
+      loaded: ok,
+      devMock: window.Wallet && window.Wallet.isDevMock,
+      publicKey: window.Wallet && window.Wallet.publicKey,
+      status: window.IsabellaEntitlement && window.IsabellaEntitlement.status(),
+    }, null, 2);
+    window.smokeReady = ok;
+  })();
+</script>
+</body>
+</html>

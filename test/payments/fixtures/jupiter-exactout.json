@@ -1,0 +1,88 @@
+{
+ "recordedAt": "2026-10-02T03:06:12.683Z",
+ "dummyParent": "7LsvGPXCm71nvNoJB84vjGkMSAy1ntGBEQJpx1F9fpw8",
+ "dummyMerchant": "9YrV3yq1nJwj4MGVkHXXnuATKTDadE3uBDGbNwS4PXNr",
+ "dummyAta": "CzfoZmStK6yaeVKkDgfPTWwkf5gp1MPiBqBMAdZ9kTd7",
+ "result": {
+  "dryRun": true,
+  "route": "exactOut",
+  "quote": {
+   "inputMint": "So11111111111111111111111111111111111111112",
+   "inAmount": "124931565",
+   "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+   "outAmount": "15000000",
+   "otherAmountThreshold": "125556223",
+   "swapMode": "ExactOut",
+   "slippageBps": 50,
+   "priceImpactPct": "0",
+   "labels": [
+    "PancakeSwap"
+   ]
+  },
+  "reference": "J1FfnSQAGri5LWgogQx5TiYsath4jsAeDmwXcqYe6t9j",
+  "size": 776,
+  "refundsTokenAccount": true,
+  "transaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAHD149uwLZaHf4ptsP3IPfYr8LgMqM3Hgtr8E5LZ8bFT2PKpgSUFtcgtYPQ4RcKJFlWV2wQWccH/tkfEP7qH5LnHOjmPZPjObJ5GlPm2YiAJDXijyLcuZB0IsBKVqY2mK5PLI2iW0x9WnMu3kNo8+ec2YRTNjOc3ghm/WHtpt3y9aOL7N6EF4PKMjR1NlLihg46qu/uRKfqutljPkVAKXGy/QhVo6G7ssiVCcZeI3vgUqWU+z6zwCU2/aMXc4QOEvcJUF8TYhdKrU7PXqnSbsYrZxm+XPQorwL4XEzBiFxaFuOfwZzqvNt88t5+isgwG/9W57SlO4buwA0a1fU4b596GsDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAIyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqQR51VvyMcBu7nTFbs5oFQf9sbLeo/SOUQKxzaJWvBOPtD/6J/XX9kp0wJsfKVh53ksJqzbfyd1RSzIap7OM5ej8p0OAUrapHWtLcaFvJqKMfmbLuyVvME/nZo5RgZuaHgbD4DrFnKSBrHeDuKHK75XDZllX60sZepLa58js2vtACQgABQLAXBUACQYAAQAUCgsBAQoCAAEMAgAAAP/VewcAAAAACwEBAREJBgACABUKCwEBDBkAAQIUFQsLAw0MFgAXDwECEBESCwQTBQYMJ52KuFIV9PMkwOHkAAAAAADtTXIHAAAAADIAAAAAAAEAAAAaECcAAQsDAQAAAQkLAwIAAAEJCgMABw4MAgAAAAAAAAAAAAAAATCeSJMsQicZToxeL3T3/XgCfptax/6uITMhZOY6zpEVBfHr8OqYBAYSmew=",
+  "simulation": {
+   "err": "AccountNotFound",
+   "unitsConsumed": null,
+   "logs": []
+  }
+ },
+ "decoded": [
+  {
+   "i": 0,
+   "program": "ComputeBudget",
+   "accounts": 0,
+   "dataBytes": 5
+  },
+  {
+   "i": 1,
+   "program": "AssociatedToken",
+   "accounts": 6,
+   "dataBytes": 1
+  },
+  {
+   "i": 2,
+   "program": "System",
+   "accounts": 2,
+   "dataBytes": 12
+  },
+  {
+   "i": 3,
+   "program": "Token",
+   "accounts": 1,
+   "dataBytes": 1
+  },
+  {
+   "i": 4,
+   "program": "AssociatedToken",
+   "accounts": 6,
+   "dataBytes": 1
+  },
+  {
+   "i": 5,
+   "program": "Jupiter v6",
+   "accounts": 25,
+   "dataBytes": 39
+  },
+  {
+   "i": 6,
+   "program": "Token",
+   "accounts": 3,
+   "dataBytes": 1
+  },
+  {
+   "i": 7,
+   "program": "Token",
+   "accounts": 3,
+   "dataBytes": 1
+  },
+  {
+   "i": 8,
+   "program": "System",
+   "accounts": 3,
+   "dataBytes": 12
+  }
+ ]
+}

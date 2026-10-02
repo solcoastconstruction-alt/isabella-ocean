@@ -65,6 +65,7 @@
   // What went wrong, in a parent's words. The payment modules' errors are read loosely: a `.code`,
   // a `.cancelled` flag (Contract 1's shape), or failing those the message text.
   function kindOf(e) {
+    if (e && typeof e.code === 'string' && COPY[e.code]) return e.code;
     const c = String((e && (e.code || e.error)) || '').toLowerCase();
     const s = `${c} ${String((e && e.message) || (typeof e === 'string' ? e : '')).toLowerCase()}`;
     if ((e && e.cancelled) || /cancel|declin|reject|denied|abort/.test(s)) return 'cancelled';
@@ -232,7 +233,7 @@
         </div>`;
     } else if (view === 'tokens') {
       body.innerHTML = head(`Pay US$${priceUsd()} once`, 'Choose what to pay with') + (tokens.length
-        ? `<div class="toks">${tokens.map((t, i) => `<button class="tok" data-act="pick" data-i="${i}">${logoHtml(t)}<b>${esc(fmtAmount(t.amountNeeded))} ${esc(t.symbol)}</b></button>`).join('')}</div>`
+        ? `<div class="toks">${tokens.map((t, i) => `<button class="tok${t.enough === false ? ' short' : ''}" data-act="pick" data-i="${i}"${t.enough === false ? ' disabled' : ''}>${logoHtml(t)}<b>${esc(fmtAmount(t.amountNeeded))} ${esc(t.symbol)}</b>${t.enough === false ? '<small>not enough</small>' : ''}</button>`).join('')}</div>`
         : '<p class="pw-p">Nothing in this wallet can pay for World 2 right now.</p>') + '<div class="pw-row"><button class="pbtn" data-act="choose">Back</button></div>';
     } else if (view === 'busy') {
       body.innerHTML = busyHtml(d);

@@ -161,6 +161,9 @@
   // ---- buttons ----
   const tap = (id, fn) => $(id).addEventListener('click', () => { A.init(); A.click(); fn(); });
   tap('playBtn', () => { save.played = true; persist(); goLevels(); });
+  // The two small games are their own pages; their home buttons come back here.
+  tap('popBtn', () => { persist(); location.href = 'games/pop/index.html'; });
+  tap('matchBtn', () => { persist(); location.href = 'games/match/index.html'; });
   tap('soundBtn', () => { save.muted = !save.muted; A.setMuted(save.muted); persist(); setSoundIcon(); });
   tap('levelsHome', goTitle);
   let hintT = null;
