@@ -199,6 +199,7 @@ final class WalletBridge {
     private void begin(String id, String chain, String what, Job job) {
         if (!validChain(chain)) { deliver(id, fail("unsupported chain: " + chain)); return; }
         if (!busy.compareAndSet(false, true)) { deliver(id, fail("busy: another wallet request is still open")); return; }
+        WalletKeepAlive.start(activity);   // no freezing while the parent is in the wallet
         try {
             worker.execute(() -> {
                 JSONObject result;
@@ -207,11 +208,13 @@ final class WalletBridge {
                 } catch (Throwable t) {
                     result = describe(t);
                 }
+                WalletKeepAlive.stop(activity);
                 busy.set(false);
                 Log.i(TAG, "wallet: " + what + " " + chain + " -> " + summary(result));
                 deliver(id, result);
             });
         } catch (RejectedExecutionException e) { // the activity is gone
+            WalletKeepAlive.stop(activity);
             busy.set(false);
         }
     }

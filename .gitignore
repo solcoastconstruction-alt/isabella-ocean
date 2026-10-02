@@ -16,3 +16,4 @@ tools/keys/
 !.dev.vars.example
 .env*
 !.env.example
+.local/

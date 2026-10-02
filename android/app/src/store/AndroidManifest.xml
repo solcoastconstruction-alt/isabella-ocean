@@ -4,4 +4,9 @@
     <!-- The page talks to Solana RPC (devnet for the demo). The MWA client library also declares
          INTERNET, ACCESS_NETWORK_STATE and the solana-wallet <queries> entry that available() needs. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- WalletKeepAlive: stops Android freezing the game while a parent is in the wallet app. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <application>
+        <service android:name=".WalletKeepAlive" android:exported="false" android:foregroundServiceType="shortService" />
+    </application>
 </manifest>
