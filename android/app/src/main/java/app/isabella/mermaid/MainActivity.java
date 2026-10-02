@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.graphics.drawable.Icon;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -51,6 +52,14 @@ public class MainActivity extends Activity {
             return false;
         }
         @JavascriptInterface public void pinToHome() { runOnUiThread(MainActivity.this::requestPin); }
+        /** Opens one of the game's own web pages (privacy policy, terms) in the browser; nothing else. */
+        @JavascriptInterface public boolean openUrl(String url) {
+            if (url == null || !url.startsWith("https://isabellaocean-app.pages.dev/")) return false;
+            runOnUiThread(() -> {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception e) { Log.w("Isabella", "no browser for " + url); }
+            });
+            return true;
+        }
     }
 
     @Override

@@ -179,6 +179,15 @@
 
   // ---- shared bits of the grown-ups' screens ----
   const X = '<button class="pw-x" data-act="close" aria-label="Close"><svg><use href="#i-close"/></svg></button>';
+  // The game's own site (privacy policy, terms). Links open in the phone's browser, never inside the game.
+  const SITE = 'https://isabellaocean-app.pages.dev/';
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[data-ext]');
+    if (!a) return;
+    e.preventDefault();
+    try { if (window.IsabellaApp && window.IsabellaApp.openUrl && window.IsabellaApp.openUrl(a.href)) return; } catch (err) { /* no bridge */ }
+    window.open(a.href, '_blank', 'noopener');
+  });
   const head = (title, sub, noClose) => `<div class="pw-head"><div><div class="pw-title">${esc(title)}</div>${sub ? `<div class="pw-sub">${esc(sub)}</div>` : ''}</div>${noClose ? '' : X}</div>`;
   const busyHtml = (d) => `<div class="pw-center"><div class="spin"></div><div class="pw-h2">${esc(d.title)}</div>${d.text ? `<p class="pw-p">${esc(d.text)}</p>` : ''}</div>`;
   const msgHtml = (d, buttons) => `<div class="pw-center"><div class="pw-h2">${esc(d.title)}</div><p class="pw-p">${esc(d.text)}</p>${d.detail ? `<p class="pw-small">${esc(d.detail)}</p>` : ''}<div class="pw-row">${buttons}</div></div>`;
@@ -364,7 +373,8 @@
         <div class="pw-sub">${pk ? `Wallet ${esc(short(pk))}` : 'No wallet connected'}</div>
         ${offLine ? `<div class="pw-warn">${esc(offLine)}</div>` : ''}
       </div>${X}</div>
-      <div class="acts">${acts.join('')}</div>${pendHtml}`;
+      <div class="acts">${acts.join('')}</div>${pendHtml}
+      <p class="pw-legal"><a href="${SITE}privacy" data-ext>Privacy policy</a> · <a href="${SITE}terms" data-ext>Terms</a></p>`;
   }
   function openManage() { open('pwManage'); loadManage(); }
   async function loadManage() {

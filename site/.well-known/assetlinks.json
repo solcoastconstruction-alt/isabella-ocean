@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.isabella.mermaid.seeker",
+      "sha256_cert_fingerprints": [
+        "BE:22:1E:89:34:43:DA:8A:BB:06:15:B3:CE:43:FB:58:99:51:C7:CD:B5:E5:39:37:E5:C9:CF:DC:12:FF:42:23"
+      ]
+    }
+  }
+]

@@ -9,3 +9,10 @@ tools/keys/
 *.keypair.json
 .public-mirror/
 .claude/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example

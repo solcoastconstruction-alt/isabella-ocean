@@ -73,9 +73,11 @@ final class WalletBridge {
     private static final int REQUEST_WALLET = 0x15AB;
 
     // Contract 1 identity. The wallet resolves the relative icon against the identity URI.
-    private static final Uri IDENTITY_URI = Uri.parse("https://isabella.app"); // placeholder domain
-    private static final Uri ICON_URI = Uri.parse("favicon.ico");
-    private static final String IDENTITY_NAME = "Isabella the Mermaid";
+    // The wallet verifies this identity against https://isabellaocean-app.pages.dev/.well-known/assetlinks.json
+    // (package + signing-cert SHA-256; site source in site/). The icon path is relative to the URI.
+    private static final Uri IDENTITY_URI = Uri.parse("https://isabellaocean-app.pages.dev");
+    private static final Uri ICON_URI = Uri.parse("icon.png");
+    private static final String IDENTITY_NAME = "Isabella Ocean";
     private static final String DEVNET = "solana:devnet", MAINNET = "solana:mainnet";
 
     private static final long FOREGROUND_WAIT_MS = 20_000;  // the wallet can only be opened while we are in front
