@@ -1,0 +1,4 @@
+# Secrets: keypairs never leave this machine (the repo root .gitignore also covers pool/keys/)
+keys/
+*.keypair.json
+node_modules/

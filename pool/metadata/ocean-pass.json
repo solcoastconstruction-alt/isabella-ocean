@@ -1,0 +1,12 @@
+{
+  "name": "Isabella Ocean Pass",
+  "symbol": "OCEAN",
+  "description": "Stake-to-play pass for Isabella the Mermaid. Each OCEAN is backed by about 1 SOL staked in the Isabella stake pool; the pool's staking rewards go to the studio and fund the game. Redeem for SOL instantly from the pool's reserve (0.3% fee) or free after about one epoch.",
+  "image": "https://REPLACE-WITH-ARWEAVE-OR-IPFS/ocean-pass.png",
+  "external_url": "https://isabella.app",
+  "attributes": [],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "https://REPLACE-WITH-ARWEAVE-OR-IPFS/ocean-pass.png", "type": "image/png" }]
+  }
+}

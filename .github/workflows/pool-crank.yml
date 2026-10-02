@@ -1,0 +1,88 @@
+# Runs the stake pool's per-epoch update and rebalance (pool/crank.mjs) every 6 hours.
+# Devnet by default. Configure in GitHub -> Settings -> Secrets and variables -> Actions:
+#
+#   Secrets
+#     POOL_STAKER_KEYPAIR       JSON array of the staker keypair (needed to rebalance; it also pays
+#                               fees unless POOL_CRANK_PAYER_KEYPAIR is set). Example:
+#                               gh secret set POOL_STAKER_KEYPAIR < pool/keys/devnet/staker.json
+#     POOL_CRANK_PAYER_KEYPAIR  optional: a separate fee payer (the update alone needs no staker)
+#     POOL_RPC_URL              optional: private RPC (recommended for mainnet)
+#   Variables
+#     POOL_CLUSTER              devnet (default) | mainnet
+#     POOL_ALLOW_MAINNET        must be "yes" before the job will send any mainnet transaction
+#     RESERVE_BUFFER_SOL        SOL kept liquid for instant exits (default: pool/<cluster>.json crank.reserveBufferSol)
+#     RESERVE_BUFFER_PCT        or a % of the pool, whichever is larger (default 0)
+#     POOL_DEPOSIT_SOL          deposit size; stake moves are whole multiples of it (default 1.01)
+#     POOL_PRIMARY_VALIDATOR    vote account that holds all staked SOL (default: lowest commission)
+#     POOL_PRIORITY_MICROLAMPORTS  optional priority fee (mainnet)
+# Mainnet also needs pool/mainnet.json committed (public addresses only; see pool/README.md).
+# No secret is ever written to the repo or printed; the keypair stays in an env variable.
+name: pool-crank
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      cluster:
+        description: Cluster
+        type: choice
+        options: [devnet, mainnet]
+        default: devnet
+      dry_run:
+        description: Plan only (send nothing)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pool-crank
+  cancel-in-progress: false
+
+jobs:
+  crank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      POOL_CLUSTER: ${{ inputs.cluster || vars.POOL_CLUSTER || 'devnet' }}
+      POOL_RPC_URL: ${{ secrets.POOL_RPC_URL }}
+      POOL_STAKER_KEYPAIR: ${{ secrets.POOL_STAKER_KEYPAIR }}
+      POOL_CRANK_PAYER_KEYPAIR: ${{ secrets.POOL_CRANK_PAYER_KEYPAIR }}
+      POOL_ALLOW_MAINNET: ${{ vars.POOL_ALLOW_MAINNET }}
+      RESERVE_BUFFER_SOL: ${{ vars.RESERVE_BUFFER_SOL }}
+      RESERVE_BUFFER_PCT: ${{ vars.RESERVE_BUFFER_PCT }}
+      POOL_DEPOSIT_SOL: ${{ vars.POOL_DEPOSIT_SOL }}
+      POOL_PRIMARY_VALIDATOR: ${{ vars.POOL_PRIMARY_VALIDATOR }}
+      POOL_PRIORITY_MICROLAMPORTS: ${{ vars.POOL_PRIORITY_MICROLAMPORTS }}
+    steps:
+      - name: Check a crank key is configured
+        id: keys
+        run: |
+          if [ -n "$POOL_STAKER_KEYPAIR" ] || [ -n "$POOL_CRANK_PAYER_KEYPAIR" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=pool-crank::No POOL_STAKER_KEYPAIR or POOL_CRANK_PAYER_KEYPAIR secret is set, so there is nothing to run."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.keys.outputs.ok == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.keys.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pool/package-lock.json
+
+      - name: Install
+        if: steps.keys.outputs.ok == 'true'
+        working-directory: pool
+        run: npm ci --no-audit --no-fund
+
+      - name: Crank
+        if: steps.keys.outputs.ok == 'true'
+        working-directory: pool
+        run: node crank.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
