@@ -15,8 +15,8 @@
  *
  * Rules (BUILD-PLAN.md): family flavor is always unlocked and never touches the network or starts timers.
  * Otherwise a wallet must be connected (after Wallet.disconnect() everything reports locked), and unlocked =
- * the last SUCCESSFUL check found pool tokens >= config.stake.unlockThreshold OR a valid purchase, and
- * now < checkedAt + config.offlineGraceHours.
+ * the last SUCCESSFUL check found a valid purchase (permanent: it never lapses offline, decided at
+ * integration), OR pool tokens >= config.stake.unlockThreshold and now < checkedAt + config.offlineGraceHours.
  *
  * Purchases need no database: each purchase transaction carries a read-only "reference" key,
  * sha256("isabella-purchase-v1" + walletBase58) -> 32 bytes -> public key. refresh() finds purchases with

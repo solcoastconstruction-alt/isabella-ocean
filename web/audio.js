@@ -92,8 +92,9 @@
   window.IsabellaAudio = Object.assign(S, {
     init, startMusic, stopMusic,
     setMuted(m) { muted = m; if (master) master.gain.value = m ? 0 : 1; },
-    get muted() { return muted; },
     suspend() { if (ctx && ctx.state === 'running') ctx.suspend(); },
     resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); },
   });
+  // A live getter: Object.assign would copy `muted` once and freeze it at false.
+  Object.defineProperty(window.IsabellaAudio, 'muted', { get: () => muted, enumerable: true });
 })();

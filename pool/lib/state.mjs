@@ -91,6 +91,15 @@ export function decodeMetadata(data) {
   return { key, updateAuthority, mint, name, symbol, uri, sellerFeeBasisPoints };
 }
 
+// StakeStateV2 meta.rent_exempt_reserve (u32 tag at 0: 1 Initialized, 2 Stake; u64 at 4), or null.
+// Stake program v5 stamps a frozen legacy value here (2,282,880 for 200 bytes, the pre-2026 rent)
+// while computing delegations with the current rent (1,666,240): seen on devnet, 2 Oct 2026.
+export function stakeMetaRent(data) {
+  if (!data || data.length < 12) return null;
+  const tag = Buffer.from(data).readUInt32LE(0);
+  return tag === 1 || tag === 2 ? Buffer.from(data).readBigUInt64LE(4) : null;
+}
+
 // ---------- fetch helpers ----------
 export async function fetchPoolState(connection, programId, poolAddress, commitment = 'confirmed') {
   const poolAcc = await connection.getAccountInfo(poolAddress, commitment);

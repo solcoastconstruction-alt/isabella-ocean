@@ -264,6 +264,13 @@ test('entitlement: a purchase found through the reference survives a cleared cac
   assert.equal(Ent.status().unlocked, false);
   const s = await Ent.refresh();
   assert.equal(s.unlocked, true); assert.equal(s.via, 'purchase'); assert.equal(s.purchase, 'sigPurchase');
+  // a purchase is permanent: it stays unlocked through a long offline stretch (decided at integration;
+  // only the stake unlock needs re-checking within offlineGraceHours)
+  const savedNow = now;
+  fake.fail = true; now += 72 * HOUR;
+  const offline = await Ent.refresh();
+  assert.equal(offline.unlocked, true, 'still unlocked 72 h offline'); assert.equal(offline.via, 'purchase'); assert.equal(offline.offline, true);
+  fake.fail = false; now = savedNow;
   // a purchase is kept through revokeLocal (exits only concern the stake)
   assert.equal(Ent.revokeLocal().unlocked, true);
   assert.equal(Ent.revokeLocal({ all: true }).unlocked, false);
@@ -370,8 +377,9 @@ test('family flavor: the modules do nothing on load (no RPC, no timers) and stay
 });
 
 test('every error message reads as its own .code under the paywall\'s keyword matching', async () => {
-  // paywall.js (main, 2 Oct) shows errors by testing code + message against keyword regexes in this order.
-  // A 'funds' error whose message says "network" would be shown as offline, so check every literal message.
+  // paywall.js now reads an exact .code first, but still falls back to these keyword regexes (code + message,
+  // in this order) for anything else. Keep every message consistent with its code under that fallback, so a
+  // 'funds' error whose text says "network" can never be shown as offline.
   const kindOf = (code, message) => {
     const s = `${code} ${message}`.toLowerCase();
     if (code === 'cancelled' || /cancel|declin|reject|denied|abort/.test(s)) return 'cancelled';

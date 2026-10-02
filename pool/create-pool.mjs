@@ -27,9 +27,9 @@ import {
   FEE_TYPE, FUNDING_TYPE, fee, validatorListSpace, findWithdrawAuthority, findValidatorStake, findMetadata,
   initialize, setFee, setFundingAuthority, createTokenMetadata, addValidatorToPool, depositSol,
 } from './lib/ix.mjs';
-import { decodeStakePool } from './lib/state.mjs';
+import { decodeStakePool, stakeMetaRent } from './lib/state.mjs';
 import { sendTx } from './lib/tx.mjs';
-import { loadState, isStale, buildUpdateInstructions, quoteDepositSol } from './lib/pool-ops.mjs';
+import { loadState, isStale, buildUpdateInstructions, quoteDepositSol, rentMode } from './lib/pool-ops.mjs';
 
 // ---- BUILD-PLAN "Pool settings" ----
 const SETTINGS = {
@@ -84,6 +84,7 @@ function persist(extra = {}) {
     cluster: ctx.cluster,
     rpcUrl: cfg.rpcUrl ?? ctx.rpcUrl,
     programId: programId.toBase58(),
+    rentMode: rentMode(cfg, programId),
     pool: pool.toBase58(),
     validatorList: validatorList.toBase58(),
     reserve: reserve.toBase58(),
@@ -172,6 +173,17 @@ let poolState = null;
       const space = validatorListSpace(SETTINGS.maxValidators);
       ixs.push(SystemProgram.createAccount({ fromPubkey: payer.publicKey, newAccountPubkey: validatorList, lamports: await conn.getMinimumBalanceForRentExemption(space), space, programId }));
       signers.push(listKp);
+    }
+    // v2.0.x (devnet) computes the reserve minimum from the reserve's meta.rent_exempt_reserve,
+    // which stake v5 stamps at the legacy 2,282,880 while the account only needs the current rent
+    // (1,666,240): top the reserve up to its meta value or Initialize fails with CalculationFailure.
+    if (rentMode(cfg, programId) === 'meta') {
+      const res = await conn.getAccountInfo(reserve);
+      const meta = res ? stakeMetaRent(res.data) : null;
+      if (res && meta !== null && BigInt(res.lamports) < meta) {
+        ixs.unshift(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: reserve, lamports: Number(meta - BigInt(res.lamports)) }));
+        console.log(`  ..  reserve holds ${res.lamports} lamports but its meta.rent_exempt_reserve is ${meta}: adding ${meta - BigInt(res.lamports)} lamports before Initialize`);
+      }
     }
     const init = initialize({
       programId, stakePool: pool, manager, staker: staker.publicKey, withdrawAuthority, validatorList,

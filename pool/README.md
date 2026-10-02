@@ -62,7 +62,27 @@ Background research, with source links: [`docs/kids-bundle/appendix-b-own-stake-
 
 ## Devnet deployment
 
-Public addresses live in [`devnet.json`](devnet.json), which the scripts read. Program: **`DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib`**. This is the devnet stake-pool program; its binary was deployed on 21 Jan 2026 and its log strings show v2.0.x code.
+Created 2 Oct 2026, epoch 1172. Public addresses live in [`devnet.json`](devnet.json), which the scripts read.
+
+| Account | Address |
+|---|---|
+| Pool | [`D5k3bxRYCWizSToy7C3WzQoPBXYNAUZ78Lo2vvFR9q7a`](https://explorer.solana.com/address/D5k3bxRYCWizSToy7C3WzQoPBXYNAUZ78Lo2vvFR9q7a?cluster=devnet) |
+| Mint (OCEAN, 9 decimals) | `Fm2VtHvAdzAFz7XbD9gNWbrnnqhEqkCEoZVyVyxFS7TT` |
+| Reserve | `6VJJwviBbfa9WNNNSmK8aR1UpGNuhwZSgwtPUuqTm4Ud` |
+| Validator list | `ANX2oxjGduXwgDE5SmVM2o9NWDfTbHDMeE8mBuXwNEaM` |
+| Withdraw authority (PDA) | `63rAwzgKQ7P5CSHVtQi6Gasu3wVKhChmzxA2H2A5ssRD` |
+| Manager fee account | `9LMkFnDWnsHU1SxXanacXRp1HZKs6jDE5UAcnreVvgC2` |
+| Manager / staker | `Ga9LMAoVmGdTNHk8SXy2ZHEReEfcEHdagm8hV177UZs7` / `4SVrSXhrS3CFYTetjMCZeqMt7TdKyc9fqn84pBHRpRx5` |
+| Validators | primary `APsEUZJjrb58KCS6z7rJJAmXB76b9bfAigjDzG242xhr` (0%); `FwR3PbjS5iyqzLiLugrBqKSa5EKZ4vK9SKs7eQXtT59f` (10%) |
+
+Program: **`DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib`**. This is the devnet stake-pool program; its binary was deployed on 21 Jan 2026 and its log strings show v2.0.x code.
+- **Legacy-rent quirk on devnet:** stake program v5 stamps a frozen, legacy `rent_exempt_reserve` of 2,282,880 lamports into every stake account's meta. Accounts actually need the current rent, 1,666,240, and delegations are computed with it.
+- **How v2.0.x reacts:** v2.0.x reads the meta value, so on this pool:
+  - the reserve minimum is 2,282,880 (the reserve was topped up by 616,640 lamports before `Initialize`, or `Initialize` fails with `CalculationFailure`);
+  - a validator's minimum is 1.00228288 SOL, while `AddValidatorToPool` funds it with 1.00166624;
+  - `UpdateStakePoolBalance` fails if the reserve ever drops below 2,282,880.
+- **How the scripts handle it:** they use the program's own numbers (`"rentMode": "meta"` in `devnet.json`), so headroom maths stays exact and the crank keeps the reserve above that floor.
+- **Mainnet is not affected:** v2.1.0 uses the Rent sysvar (`"rentMode": "rent"`).
 - **Mainnet runs v2.1.0** (`SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy`, byte-identical to the [v2.1.0 release asset](https://github.com/solana-program/stake-pool/releases/tag/program%40v2.1.0), trimmed sha256 `8df58bc9…`).
 - **The differences that matter here:** v2.1.0 adds a +0.5 percentage-point cap on each withdrawal-fee increase, updates 4 instead of 5 validators per instruction, and reads rent from the Rent sysvar.
 - **Instruction layouts are identical.**
@@ -189,7 +209,11 @@ From appendix B, plus what this build found:
 - **The pool goes stale after each epoch boundary** until someone sends the update. The app should prepend the update itself.
 - **Collecting fees drains the instant-exit reserve.** Reward fees accrue in stake, not in the reserve.
 - `DecreaseAdditionalValidatorStake` cannot merge active deactivating stake (`MergeTransientStake`). The crank therefore makes at most one decrease per validator per epoch.
-- The devnet rehearsal ran on v2.0.x; mainnet is v2.1.0.
+- **The devnet rehearsal ran on v2.0.x; mainnet is v2.1.0.**
+  - On v2.0.x, stake v5's frozen legacy `rent_exempt_reserve` (2,282,880) makes the program's minimums 616,640 lamports higher than rent.
+  - If the reserve ever falls below that floor, `UpdateStakePoolBalance` fails, and every deposit and withdrawal then fails with `0x11` until someone sends lamports to the reserve.
+  - The scripts guard against this ("Devnet deployment" above).
+  - Do not run a v2.0.x pool on mainnet.
 - **`npm audit`** flags advisories in transitive web3.js v1 dependencies (`bigint-buffer`, `stream-json`). These scripts parse only responses from the configured RPC. Use a trusted RPC.
 
 ## How the hand-encoded instructions were validated
@@ -198,4 +222,9 @@ The JS SDK has no `Initialize`, `SetFee`, `SetFundingAuthority` or slippage vari
 1. **Hand-written byte vectors** (`npm test`) for `Initialize`, `SetFee`, `SetFundingAuthority`, `CreateTokenMetadata` and the slippage variants. Note that `Fee` is `{denominator, numerator}`, denominator first. Two injected defects (swapped fee fields, a wrong instruction index) were confirmed to fail the suite.
 2. **Byte-for-byte comparison with the SDK** (data and account metas) for every instruction the SDK also has.
 3. **Simulation against the deployed devnet program** (nothing signed or sent): update, SetFee, SetFundingAuthority, DepositSolWithSlippage, WithdrawSolWithSlippage, WithdrawStake + Deactivate, Increase(+Additional), AddValidatorToPool and CreateTokenMetadata all succeeded. Negative cases failed with the expected errors (FeeIncreaseTooHigh, ExceededSlippage, InsufficientDelegation, WrongManager).
-4. **Real devnet transactions.** The on-chain pool state, decoded independently, matches the intended settings (see `status.mjs`).
+4. **Real devnet transactions** (2 Oct 2026):
+   - **Creation:** create, Initialize, SetFee, SetFundingAuthority, CreateTokenMetadata, seed, and AddValidatorToPool ×2.
+   - **Parent flow:** DepositSolWithSlippage ×3, WithdrawSolWithSlippage (exactly the 0.3% fee), the whole-deposit IncreaseValidatorStake (2.02 SOL), WithdrawStakeWithSlippage + Deactivate in one parent-signed transaction, and the claim.
+   - **Fees and liquidity:** the fee test (0.01 SOL of "rewards" minted exactly 0.01 OCEAN to the manager), IncreaseAdditionalValidatorStake (a dust repair to whole deposits), and WithdrawSol from the manager fee account.
+
+   SOL per token stayed at 1.000000000 throughout. The decoded on-chain state matches the intended settings (`status.mjs`).

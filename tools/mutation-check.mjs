@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const MUTATIONS = [
-  ['entitlement.js', 'the offline grace window never expires', 'const unlocked = !!c.unlocked && !!c.via && until !== null && env.now() < until;', 'const unlocked = !!c.unlocked && !!c.via && until !== null;'],
+  ['entitlement.js', 'the offline grace window never expires', "const unlocked = !!c.unlocked && !!c.via && until !== null && (c.via === 'purchase' || env.now() < until);", 'const unlocked = !!c.unlocked && !!c.via && until !== null;'],
+  ['entitlement.js', 'a purchase lapses offline again', "(c.via === 'purchase' || env.now() < until)", '(env.now() < until)'],
   ['entitlement.js', 'revokeLocal hold ignored', 'const held = !!(same && same.holdUntil && now < same.holdUntil && !opts.ignoreHold);', 'const held = false;'],
   ['entitlement.js', 'reference prefix changed', "const REFERENCE_PREFIX = 'isabella-purchase-v1';", "const REFERENCE_PREFIX = 'isabella-purchase-v2';"],
   ['entitlement.js', 'family flavor touches the network', 'if (isFamily()) return Promise.resolve(emitIfChanged());', ''],

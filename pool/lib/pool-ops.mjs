@@ -5,13 +5,13 @@ import { PublicKey, StakeProgram } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { pk } from './env.mjs';
 import {
-  MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, STAKE_ACCOUNT_SPACE,
+  MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, STAKE_ACCOUNT_SPACE, STAKE_POOL_PROGRAM_ID_DEVNET,
   findWithdrawAuthority, findValidatorStake, findTransientStake, findEphemeralStake,
   updateValidatorListBalance, updateStakePoolBalance, cleanupRemovedValidatorEntries,
   increaseValidatorStake, increaseAdditionalValidatorStake,
   decreaseValidatorStakeWithReserve, decreaseAdditionalValidatorStake,
 } from './ix.mjs';
-import { fetchPoolState, U64_MAX } from './state.mjs';
+import { fetchPoolState, stakeMetaRent, U64_MAX } from './state.mjs';
 
 // ---------- addresses ----------
 export function poolAddresses(config) {
@@ -87,16 +87,31 @@ export async function loadState(ctx) {
   if (!st) throw new Error(`stake pool ${a.pool.toBase58()} not found`);
   const minDelegation = minDelegationRpc > MINIMUM_ACTIVE_STAKE ? minDelegationRpc : MINIMUM_ACTIVE_STAKE; // lib.rs minimum_delegation()
   const rent = BigInt(stakeRent);
+  // The minimums the PROGRAM uses: v2.1.0 (mainnet) reads the Rent sysvar; v2.0.x (devnet DPoo1)
+  // reads each stake account's meta.rent_exempt_reserve, which stake v5 freezes at the legacy
+  // 2,282,880. Using the program's own numbers keeps headroom maths exact and the reserve above
+  // the floor below which v2.0.x UpdateStakePoolBalance fails (checked_sub -> CalculationFailure).
+  const mode = rentMode(ctx.config, a.programId);
+  const reserveMeta = stakeMetaRent(st.reserveAccount.data) ?? rent;
+  const floor = mode === 'meta' ? reserveMeta : rent;
   return {
     ...st,
     addresses: a,
     epochInfo,
     epoch: BigInt(epochInfo.epoch),
-    stakeRent: rent,
-    reserveRent: BigInt(await ctx.connection.getMinimumBalanceForRentExemption(st.reserveAccount.data.length)),
+    rentMode: mode,
+    stakeRent: rent, // what new stake accounts (validator, transient, ephemeral) are funded with
+    reserveRent: floor, // the reserve minimum the program enforces / subtracts
     minDelegation,
-    requiredValidatorLamports: rent + minDelegation, // minimum_stake_lamports()
+    requiredValidatorLamports: floor + minDelegation, // minimum_stake_lamports() as the program computes it
   };
+}
+
+// 'meta' for program versions that read meta.rent_exempt_reserve (v2.0.x, the devnet DPoo1… build),
+// 'rent' for v2.1.0+ (mainnet SPoo1…). Override with "rentMode" in the cluster config.
+export function rentMode(config, programId) {
+  if (config?.rentMode === 'meta' || config?.rentMode === 'rent') return config.rentMode;
+  return programId.equals(STAKE_POOL_PROGRAM_ID_DEVNET) ? 'meta' : 'rent';
 }
 
 // Total the program would compute in UpdateStakePoolBalance (L2223-L2236)
