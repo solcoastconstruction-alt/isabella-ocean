@@ -74,7 +74,7 @@
     if (extra) Object.assign(e, extra);
     return e;
   }
-  const NETWORK_RE = /fetch failed|failed to fetch|network|timed? ?out|ECONNRESET|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket|\b(429|502|503|504)\b/i;
+  const NETWORK_RE = /fetch failed|failed to fetch|network|timed?[ -]?out|ECONNRESET|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket|\b(408|429|502|503|504)\b/i;   // 408 "Request Time-out": the public RPC's proxy gave up
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const sol = (lamports) => Number(lamports) / 1e9;
   const fmtSol = (lamports) => String(Math.round(sol(lamports) * 10000) / 10000);
