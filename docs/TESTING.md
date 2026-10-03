@@ -13,9 +13,9 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | `node test/games/pop/verify.js` | Bubble Party rules, level table, old-save conversion | 25/25 | – |
 | `node test/games/pop/browser.js` | Bubble Party with real touch drags | 86/86 | 9455 |
 | `node test/games/pop/soak.js` | ~3 minutes of random play: no errors or leaks | pass | 9455 |
-| `node test/games/maze/verify.js` | Coral Maze: every level solvable, fair, frozen, rising | 20/20 | – |
-| `node test/games/maze/browser.js` | Coral Maze with real touch | 59/59 | 9454 |
-| `node test/games/maze/soak.js` | ~3 minutes of random play | pass | 9454 |
+| `node test/games/maze/verify.js` | Coral Maze: all 40 levels (Easy + Hard) solvable, trap-free, frozen, rising; every Hard level harder than Easy 20 (~50 s; `--easy` for a 1 s run) | 40/40 | – |
+| `node test/games/maze/browser.js` | Coral Maze with real touch: the mode picker, Hard scrolling, saves | 115/115 | 9454 |
+| `node test/games/maze/soak.js` (or `… hard`) | ~3 minutes of random play | pass | 9454 |
 | `node test/games/words/verify.js` | Sea Words: 13,000 puzzles; placement, modes, no rude words, fresh vs seeded | 69/69 | – |
 | `node test/games/words/browser.js` | Sea Words with real touch drags in all modes | 86/86 | 9457 |
 | `node test/games/words/soak.js` | ~3 minutes of random play | pass | 9457 |

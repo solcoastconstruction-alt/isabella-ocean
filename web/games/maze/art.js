@@ -914,12 +914,380 @@
     }
   }
 
+  // ---------- Hard: a maze much bigger than the screen, and a view that follows her ----------
+  // The tunnels keep one comfortable size (HARD_C world units, about 15vh: a little bigger than Easy's last levels,
+  // and never shrunk to fit). The maze sits in a "world" laid out like an Easy screen (the home button's column on
+  // the left, the open sea with the treasure chest on the right, sand along the bottom), and the view `cam` (the
+  // world point at the screen's top left) follows Isabella round it (game.js).
+  const HARD_C = 84;
+  function layoutHard(W, Hc) {
+    const c = HARD_C, rim = 0.42 * c, top = 30, bottom = 22, mw = W * c, mh = Hc * c;
+    const x0 = HOME_COL + rim, y0 = top + rim, seaX = x0 + mw + rim, sea = clamp(VW * 0.13, 104, 176) + 60;
+    const worldW = Math.max(VW, seaX + sea), worldH = Math.max(H, y0 + mh + rim + bottom), chestSc = clamp(c / 100, 0.6, 0.9);
+    return {
+      c, rim, x0, y0, mw, mh, W, H: Hc, tunnel: 0.62 * c, seaX, scroll: true, worldW, worldH,
+      chestX: Math.min(seaX + 26 + 62 * clamp(c / 90, 0.6, 0.95), (seaX + worldW) / 2), chestY: worldH - 34 * chestSc, chestSc,
+    };
+  }
+
+  // The reef of a Hard level is far too big for one picture, so it is drawn in square tiles (TILE canvas pixels),
+  // each the first time it comes near the view, and only the tiles on screen are drawn each frame. Everything
+  // random about the reef is settled once, in reefPlan (each piece of coral carries its own seed), so a piece that
+  // straddles two tiles is drawn the same in both and the tiles meet without a seam.
+  // (MAX_TILES covers the view and the ring of tiles round it on the Seeker's screen, at most 8 x 6: no tile near the
+  // view is ever let go and made again)
+  const TILE = 512, MAX_TILES = 48;
+  let tileSet = null, tileClock = 0;
+  function reefPlan(lv, lay, th) {
+    const R = mulberry32((lv.seed * 2654435761 + 12345) >>> 0), c = lay.c, rim = lay.rim;
+    const bx = lay.x0 - rim, by = lay.y0 - rim, bw = lay.mw + 2 * rim, bh = lay.mh + 2 * rim;
+    const body = new Path2D();
+    roundRectPath(body, bx, by, bw, bh, rim * 1.3);
+    const lump = (x, y) => {
+      const rx = (0.18 + R() * 0.14) * c, ry = (0.16 + R() * 0.12) * c, rot = R() * 3;
+      body.moveTo(x + rx * Math.cos(rot), y + rx * Math.sin(rot));
+      body.ellipse(x, y, rx, ry, rot, 0, TAU);
+      body.closePath();
+    };
+    for (let x = bx + rim; x < bx + bw - rim; x += c * (0.45 + R() * 0.3)) { lump(x, by + 0.1 * c); lump(x, by + bh - 0.1 * c); }
+    for (let y = by + rim; y < by + bh - rim; y += c * (0.45 + R() * 0.3)) { lump(bx + 0.1 * c, y); lump(bx + bw - 0.1 * c, y); }
+    const n = Math.round((bw * bh) / (c * c) * 5), blobs = [], pores = [];
+    for (let k = 0; k < n; k++) {
+      const x = bx + R() * bw, y = by + R() * bh, rr = (0.06 + R() * 0.16) * c, light = R() < 0.55, a = 0.18 + R() * 0.2;
+      blobs.push({ x, y, rr, ry: rr * (0.6 + R() * 0.4), rot: R() * 3, col: light ? th.rock[2] : th.rock[1], a });
+    }
+    for (let k = 0; k < n * 0.6; k++) pores.push({ x: bx + R() * bw, y: by + R() * bh, r: (0.012 + R() * 0.02) * c });
+    const spots = [], tips = th.tip;
+    const spot = (x, y) => spots.push({ x, y, k: R(), col: tips[Math.floor(R() * tips.length)], seed: Math.floor(R() * 4294967296) });
+    for (let j = 0; j <= lv.H; j++) for (let i = 0; i <= lv.W; i++) spot(lay.x0 + i * c, lay.y0 + j * c);
+    for (let i = 0; i < lv.N; i++) {
+      const x = cellX(lay, lv, i), y = cellY(lay, lv, i);
+      if (!(lv.open[i] & 2) && lv.cx[i] < lv.W - 1) spot(x + c / 2, y);
+      if (!(lv.open[i] & 4) && lv.cy[i] < lv.H - 1) spot(x, y + c / 2);
+    }
+    const tops = [];
+    for (let x = bx + rim * 0.8; x < bx + bw - rim * 0.8; x += c * (0.55 + R() * 0.5)) tops.push({ x, col: tips[Math.floor(R() * tips.length)], k: R(), seed: Math.floor(R() * 4294967296) });
+    return { bx, by, bw, bh, body, blobs, pores, spots, tops };
+  }
+  // the tunnels of the cells within a world rectangle (and the way out, if it is near)
+  function tunnelPathIn(lv, lay, x0, y0, x1, y1) {
+    const p = new Path2D(), c = lay.c, w = lay.tunnel, r = w * 0.32;
+    const i0 = Math.max(0, Math.floor((x0 - lay.x0) / c) - 1), i1 = Math.min(lv.W - 1, Math.floor((x1 - lay.x0) / c) + 1);
+    const j0 = Math.max(0, Math.floor((y0 - lay.y0) / c) - 1), j1 = Math.min(lv.H - 1, Math.floor((y1 - lay.y0) / c) + 1);
+    for (let j = j0; j <= j1; j++) {
+      for (let ii = i0; ii <= i1; ii++) {
+        const i = j * lv.W + ii, x = cellX(lay, lv, i), y = cellY(lay, lv, i);
+        roundRectPath(p, x - w / 2, y - w / 2, w, w, r);
+        if (lv.open[i] & 2 && i !== lv.exit) p.rect(x, y - w / 2, c, w);
+        if (lv.open[i] & 4) p.rect(x - w / 2, y, w, c);
+      }
+    }
+    const ex = cellX(lay, lv, lv.exit), ey = cellY(lay, lv, lv.exit), edge = lay.seaX;
+    if (edge + c > x0 && ex - c < x1 && ey + c > y0 && ey - c < y1) {
+      p.rect(ex, ey - w / 2, edge - ex + 8, w);
+      p.moveTo(edge - lay.rim * 0.7, ey - w / 2);
+      p.quadraticCurveTo(edge - lay.rim * 0.1, ey - w / 2, edge + 4, ey - w * 0.85);
+      p.lineTo(edge + 4, ey + w * 0.85);
+      p.quadraticCurveTo(edge - lay.rim * 0.1, ey + w / 2, edge - lay.rim * 0.7, ey + w / 2);
+      p.closePath();
+    }
+    return p;
+  }
+  // one piece of coral on the rock (as buildReef draws them), from its own seed
+  function drawSpot(sp, c, tips) {
+    const R = mulberry32(sp.seed), k = sp.k, x = sp.x, y = sp.y, col = sp.col, sz = c / 70;
+    if (k < 0.3) return;
+    if (k < 0.44) {
+      for (let q = -1; q <= 1; q++) {
+        const tx = x + q * 0.075 * c, th2 = (0.1 + R() * 0.08) * c, tw = 0.055 * c;
+        ctx.fillStyle = col; rrect(tx - tw / 2, y - th2 / 2, tw, th2, tw * 0.45); ctx.fill();
+        ctx.fillStyle = 'rgba(40,10,30,0.45)'; oval(tx, y - th2 / 2 + tw * 0.25, tw * 0.32, tw * 0.18);
+      }
+    } else if (k < 0.58) {
+      for (let q = 0; q < 4; q++) { ctx.fillStyle = tips[(q + Math.floor(R() * 9)) % tips.length]; circle(x + (R() - 0.5) * 0.24 * c, y + (R() - 0.5) * 0.24 * c, (0.035 + R() * 0.04) * c); }
+    } else if (k < 0.68) {
+      ctx.fillStyle = col; star(x, y, 0.13 * c, 0.055 * c, 5, R() * 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(x, y, 0.025 * c);
+    } else if (k < 0.86) {
+      branchCoral(x, y + 0.12 * c, col, R, sz * 0.75, -Math.PI / 2 + (R() - 0.5) * 0.6);
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      for (let q = 0; q < 5; q++) circle(x + (R() - 0.5) * 0.3 * c, y + (R() - 0.5) * 0.3 * c, 0.018 * c);
+    }
+  }
+  function renderTile(ts, i, j) {
+    const { lv, lay, th, plan } = ts, c = lay.c;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = TILE;
+    const wx0 = (i * TILE) / s, wy0 = (j * TILE) / s, wx1 = ((i + 1) * TILE) / s, wy1 = ((j + 1) * TILE) / s, m = c * 0.6;
+    const near = (x, y, r) => x + r > wx0 && x - r < wx1 && y + r > wy0 && y - r < wy1;
+    const main = ctx;
+    ctx = cv.getContext('2d');
+    try {
+      ctx.setTransform(s, 0, 0, s, -i * TILE, -j * TILE);
+      const rg = ctx.createLinearGradient(0, plan.by, 0, plan.by + plan.bh);
+      rg.addColorStop(0, th.rock[0]); rg.addColorStop(1, th.rock[1]);
+      ctx.fillStyle = rg; ctx.fill(plan.body);
+      ctx.save(); ctx.clip(plan.body);
+      for (const b of plan.blobs) if (near(b.x, b.y, b.rr)) { ctx.fillStyle = b.col; ctx.globalAlpha = b.a; oval(b.x, b.y, b.rr, b.ry, b.rot); }
+      ctx.globalAlpha = 0.25; ctx.fillStyle = 'rgba(40,20,10,0.6)';
+      for (const p of plan.pores) if (near(p.x, p.y, p.r)) circle(p.x, p.y, p.r);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      const tp = tunnelPathIn(lv, lay, wx0 - c, wy0 - c, wx1 + c, wy1 + c);
+      ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = '#000'; ctx.fill(tp); ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.lineJoin = 'round';
+      ctx.translate(0, -0.05 * c); ctx.strokeStyle = 'rgba(0,15,35,0.32)'; ctx.lineWidth = 0.2 * c; ctx.stroke(tp);
+      ctx.translate(0, 0.09 * c); ctx.strokeStyle = 'rgba(255,255,240,0.32)'; ctx.lineWidth = 0.09 * c; ctx.stroke(tp);
+      ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+      for (const sp of plan.spots) if (near(sp.x, sp.y, m)) drawSpot(sp, c, th.tip);
+      ctx.restore();
+      for (const t of plan.tops) {
+        if (!near(t.x, plan.by, c)) continue;
+        const R = mulberry32(t.seed), sz = clamp(c / 90, 0.5, 0.95) * 0.65;
+        if (t.k < 0.45) fanCoral(t.x, plan.by + 0.12 * c, t.col, R, sz * 0.9);
+        else if (t.k < 0.85) branchCoral(t.x, plan.by + 0.1 * c, t.col, R, sz);
+        else { ctx.fillStyle = t.col; circle(t.x, plan.by + 0.02 * c, 0.1 * c); }
+      }
+      const ex = lay.seaX, ey = cellY(lay, lv, lv.exit), pr = lay.tunnel * 0.95;
+      if (near(ex, ey, c * 1.5)) {
+        for (let k = 0; k <= 8; k++) {
+          const a = -Math.PI / 2 - 0.25 + (k / 8) * (Math.PI + 0.5);
+          drawPearl(ex - 0.22 * c - Math.cos(a) * 0.12 * c, ey + Math.sin(a) * pr, 0.06 * c + 1, 0);
+        }
+      }
+      const sx = cellX(lay, lv, lv.start), sy = cellY(lay, lv, lv.start) + lay.tunnel * 0.5;
+      if (near(sx, sy, c)) {
+        ctx.fillStyle = 'rgba(255,140,190,0.9)';
+        for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.ellipse(sx + k * 0.06 * c, sy - 0.07 * c, 0.03 * c, 0.09 * c, k * 0.25, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = '#ff6fb0'; oval(sx, sy - 0.01 * c, 0.18 * c, 0.05 * c);
+      }
+      ctx.save(); ctx.globalCompositeOperation = 'destination-over'; ctx.fillStyle = 'rgba(0,25,60,0.2)'; ctx.fill(tp); ctx.restore();
+    } finally {
+      ctx = main;
+    }
+    return cv;
+  }
+  function reefTiles(lv, lay, th) {
+    const key = 'hard:' + lv.n + ':' + lv.seed + ':' + canvas.width + 'x' + canvas.height + ':' + lay.c.toFixed(3) + ':' + lay.x0.toFixed(2);
+    if (!tileSet || tileSet.key !== key) {
+      if (tileSet) for (const t of tileSet.tiles.values()) t.cv.width = t.cv.height = 0;   // the last level's tiles: let them go now
+      const plan = reefPlan(lv, lay, th);
+      // the tiles worth drawing: those over the reef (and the coral on top of it)
+      const box = [Math.floor((plan.bx - lay.c) * s / TILE), Math.floor((plan.by - lay.c) * s / TILE), Math.floor((plan.bx + plan.bw + lay.c) * s / TILE), Math.floor((plan.by + plan.bh + lay.c) * s / TILE)];
+      tileSet = { key, lv, lay, th, plan, box, tiles: new Map(), made: 0 };
+    }
+    return tileSet;
+  }
+  // a tile, made if it is not kept; to make room, the one seen longest ago goes (never one in use this frame)
+  function tileAt(ts, i, j) {
+    const id = i * 4096 + j;
+    let t = ts.tiles.get(id);
+    if (!t) {
+      if (ts.tiles.size >= MAX_TILES) {
+        let old = null;
+        for (const u of ts.tiles.values()) if (u.used < tileClock && (!old || u.used < old.used)) old = u;
+        if (old) { ts.tiles.delete(old.i * 4096 + old.j); old.cv.width = old.cv.height = 0; }
+      }
+      t = { cv: renderTile(ts, i, j), used: tileClock, i, j };
+      ts.tiles.set(id, t); ts.made++;
+    }
+    t.used = tileClock;
+    return t;
+  }
+  // the tiles under the view (device pixels camPx, camPy at the top left); the ring of tiles round it is kept, and one
+  // missing from it is made each frame, ahead of the view, while there is room
+  function drawReefTiles(ts, camPx, camPy) {
+    tileClock++;
+    const b = ts.box, i0 = Math.max(b[0], Math.floor(camPx / TILE)), i1 = Math.min(b[2], Math.floor((camPx + canvas.width - 1) / TILE));
+    const j0 = Math.max(b[1], Math.floor(camPy / TILE)), j1 = Math.min(b[3], Math.floor((camPy + canvas.height - 1) / TILE));
+    let missing = null;
+    for (let j = Math.max(b[1], j0 - 1); j <= Math.min(b[3], j1 + 1); j++) {
+      for (let i = Math.max(b[0], i0 - 1); i <= Math.min(b[2], i1 + 1); i++) {
+        const t = ts.tiles.get(i * 4096 + j);
+        if (t) t.used = tileClock; else if (!missing && (i < i0 || i > i1 || j < j0 || j > j1)) missing = [i, j];
+      }
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) ctx.drawImage(tileAt(ts, i, j).cv, i * TILE - camPx, j * TILE - camPy);
+    if (!missing) return;
+    let busy = 0;
+    for (const t of ts.tiles.values()) if (t.used === tileClock) busy++;
+    if (ts.tiles.size < MAX_TILES || ts.tiles.size > busy) tileAt(ts, missing[0], missing[1]);
+  }
+  // back to the level select: the reef's tiles are not needed (a replay straight from the results keeps them)
+  function releaseReef() {
+    if (tileSet) for (const t of tileSet.tiles.values()) t.cv.width = t.cv.height = 0;
+    tileSet = null;
+  }
+  // make the tiles under a view ahead of time (a level's start; the ones round it follow, one a frame)
+  function prepareReef(lv, lay, cam) {
+    const ts = reefTiles(lv, lay, THEMES[lv.theme % THEMES.length]), camPx = Math.round(cam.x * s), camPy = Math.round(cam.y * s), b = ts.box;
+    for (let j = Math.max(b[1], Math.floor(camPy / TILE)); j <= Math.min(b[3], Math.floor((camPy + canvas.height - 1) / TILE)); j++) {
+      for (let i = Math.max(b[0], Math.floor(camPx / TILE)); i <= Math.min(b[2], Math.floor((camPx + canvas.width - 1) / TILE)); i++) tileAt(ts, i, j);
+    }
+    return ts.tiles.size;
+  }
+  // the sand along the bottom of the world, from world x0 to x1
+  function drawSandWorld(th, y0, x0, x1, seed) {
+    const g = ctx.createLinearGradient(0, y0 - 10, 0, y0 + 30);
+    g.addColorStop(0, th.sand[0]); g.addColorStop(1, th.sand[1]);
+    ctx.fillStyle = g;
+    const a = Math.floor(x0 / 16) * 16 - 16;
+    ctx.beginPath(); ctx.moveTo(a, y0 + 40);
+    for (let x = a; x <= x1 + 32; x += 16) ctx.lineTo(x, y0 - 4 + 5 * Math.sin(x / 90) + 3 * Math.sin(x / 37));
+    ctx.lineTo(x1 + 32, y0 + 40); ctx.closePath(); ctx.fill();
+    const tile = 170;
+    for (let i = Math.floor(x0 / tile) - 1; i <= Math.ceil(x1 / tile); i++) {
+      const R = mulberry32((i * 7919 + (seed || 0) * 104729 + 7) >>> 0), x = i * tile + R() * 120, y = y0 + 8 + R() * 12, k = R();
+      if (k < 0.3) { ctx.fillStyle = '#ff8a5c'; star(x, y, 8, 3.5, 5, R() * 3); ctx.fill(); }
+      else if (k < 0.55) { ctx.fillStyle = '#fff0e0'; ctx.beginPath(); ctx.ellipse(x, y, 7, 5, 0, Math.PI, 0); ctx.fill(); }
+    }
+  }
+  // dark water, as drawFog, for a view that moves: only what is on screen
+  function drawFogHard(v, lay, lv, time, cx, cy) {
+    const f = v.fog, fw = Math.ceil(VW / FOG) + 2, fh = Math.ceil(H / FOG) + 2;
+    if (!fogCv || fogCv.width !== fw || fogCv.height !== fh) { fogCv = document.createElement('canvas'); fogCv.width = fw; fogCv.height = fh; fogCtx = fogCv.getContext('2d'); }
+    if (!lightSprite) {
+      lightSprite = document.createElement('canvas'); lightSprite.width = lightSprite.height = 64;
+      const g = lightSprite.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.92)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    }
+    const g = fogCtx, c = lay.c / FOG;
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, fw, fh);
+    g.fillStyle = 'rgba(3,8,26,0.94)'; g.fillRect(0, 0, fw, fh);
+    g.globalCompositeOperation = 'destination-out';
+    const sx = (lay.seaX + lay.c * 0.1 - cx) / FOG;
+    if (sx - c < fw) {
+      const sg = g.createLinearGradient(sx - c * 0.6, 0, sx + c * 0.5, 0);
+      sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(0,0,0,1)');
+      g.fillStyle = sg; g.fillRect(sx - c * 0.6, 0, fw, fh);
+    }
+    g.globalAlpha = 0.6;
+    const r = lay.c * 0.95 / FOG;
+    for (let i = 0; i < lv.N; i++) {
+      if (!f.seen[i]) continue;
+      const x = (lay.x0 + (lv.cx[i] + 0.5) * lay.c - cx) / FOG, y = (lay.y0 + (lv.cy[i] + 0.5) * lay.c - cy) / FOG;
+      if (x < -r || y < -r || x > fw + r || y > fh + r) continue;
+      g.drawImage(lightSprite, x - r, y - r, 2 * r, 2 * r);
+    }
+    g.globalAlpha = 1;
+    const lit = (x, y, rr, a) => { g.globalAlpha = a; g.drawImage(lightSprite, (x - cx) / FOG - rr / FOG, (y - cy) / FOG - rr / FOG, (2 * rr) / FOG, (2 * rr) / FOG); g.globalAlpha = 1; };
+    lit(v.isa.x, v.isa.y, f.r * lay.c * (1 + 0.03 * Math.sin(time * 2)), 1);
+    lit(cellX(lay, lv, lv.exit) + lay.c * 0.5, cellY(lay, lv, lv.exit), lay.c * 1.3, 0.9);
+    for (const k of v.keysOnFloor) lit(k.x, k.y, lay.c * 0.75, 0.7);
+    for (const p of v.patrols) lit(p.x, p.y, lay.c * 0.8, 0.55);
+    ctx.save(); ctx.setTransform(s, 0, 0, s, 0, 0); ctx.globalAlpha = clamp(f.alpha, 0, 1); ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(fogCv, 0, 0, fw * FOG, fh * FOG);
+    ctx.restore();
+  }
+  // a frame of a Hard level: as drawPlay, through the view v.cam, drawing only what is on screen
+  function drawPlayHard(v, time, dt) {
+    const lv = v.lv, lay = v.lay, th = THEMES[lv.theme % THEMES.length], c = lay.c;
+    stepParts(dt);
+    // the view, on whole device pixels so the reef's tiles meet exactly
+    const camPx = Math.round(v.cam.x * s), camPy = Math.round(v.cam.y * s), cx = camPx / s, cy = camPy / s;
+    const world = () => ctx.setTransform(s, 0, 0, s, -camPx, -camPy);
+    const seen = (x, y, r) => x + r > cx && x - r < cx + VW && y + r > cy && y - r < cy + H;
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    drawWater(th, time, time * 14 + cx * 0.3);
+    drawBubbles(time, time * 14 + cx * 0.5);
+    world();
+    if (lay.worldH - 16 < cy + H + 10) {
+      drawSandWorld(th, lay.worldH - 16, cx, cx + VW, lv.seed);
+      const sx = lay.seaX;
+      for (let i = 0; i < 3; i++) seaweed(sx + 18 + i * 13, lay.worldH, 70 + i * 26, time, i % 2 ? '#3fae6a' : '#2f8f5a', i, 5);
+      seaweed(lay.worldW - 14, lay.worldH, 110, time, '#2f8f5a', 4, 5);
+      for (let i = 0; i < 2; i++) seaweed(28 + i * 16, lay.worldH, 60 + i * 30, time, i % 2 ? '#3fae6a' : '#2f8f5a', i + 7, 5);
+    }
+    if (seen(lay.chestX, lay.chestY - 60, 200)) drawChest(lay.chestX, lay.chestY, v.chest.open, time, lay.chestSc);
+    drawReefTiles(reefTiles(lv, lay, th), camPx, camPy);
+    world();
+    for (const cur of lv.currents) {
+      const a = cur.cells[0], b = cur.cells[cur.cells.length - 1], mx = (cellX(lay, lv, a) + cellX(lay, lv, b)) / 2, my = (cellY(lay, lv, a) + cellY(lay, lv, b)) / 2;
+      if (seen(mx, my, c * (cur.cells.length / 2 + 1))) drawCurrent(lv, lay, cur, time);
+    }
+    if (seen(lay.seaX, cellY(lay, lv, lv.exit), c * 2)) drawExitLight(lv, lay, time, v.exitK == null ? 1 : v.exitK);
+    lv.shells.forEach((cell, i) => { const x = cellX(lay, lv, cell), y = cellY(lay, lv, cell); if (seen(x, y, c)) drawShell(x, y + lay.tunnel * 0.36, v.shellsOpen[i], time, c / 110); });
+    lv.gates.forEach((g, k) => { const x = (cellX(lay, lv, g.a) + cellX(lay, lv, g.b)) / 2, y = (cellY(lay, lv, g.a) + cellY(lay, lv, g.b)) / 2; if (seen(x, y, c)) drawGate(lv, lay, g, k, v.gateOpen[k], time, v.gateShake[k] || 0, v.items[k] === 1); });
+    for (const kf of v.keysOnFloor) {
+      if (!seen(kf.x, kf.y, c)) continue;
+      const y = kf.y + Math.sin(time * 2.4 + kf.k) * c * 0.06;
+      glow(kf.x, y, c * 0.66, KEY_GLOW[kf.k], 0.6 + 0.3 * Math.sin(time * 4 + kf.k));
+      drawKey(kf.x, y, Math.sin(time * 2 + kf.k) * 0.25 - 0.5, c / 85, KEY_COLORS[kf.k]);
+      if (Math.random() < dt * 5) spawn({ t: 'spark', x: kf.x + (Math.random() - 0.5) * c * 0.7, y: y + (Math.random() - 0.5) * c * 0.6, vx: 0, vy: -16, life: 0.6, max: 0.6, c: '#fff8c0', r: c * 0.05 });
+    }
+    if (v.hint && !lv.dark) drawTrail(v.hint.pts, time, v.hint.bright, c);
+    for (const p of v.patrols) {
+      if (!seen(p.x, p.y, c)) continue;
+      if (p.kind === 'puffer') drawPuffer(p.x, p.y, c / 70, time, p);
+      else { if (th === THEMES[8] || lv.dark) glow(p.x, p.y, c * 0.8, 'rgba(160,255,250,0.6)', 0.6); drawJelly(p.x, p.y, c / 72, time, th, p); }
+    }
+    const I = v.isa;
+    const drawHer = () => {
+      if (I.alpha <= 0.02) return;
+      if (v.carrying >= 0 || I.party) glow(I.x, I.y, c * (I.party ? 1.1 : 0.75), I.party ? 'rgba(255,220,90,0.55)' : KEY_GLOW[v.carrying], 0.45 * I.alpha);
+      drawIsabellaCentered(I.x, I.y, time, { tilt: I.tilt, flip: I.flip, scale: I.scale, swim: I.swim, happy: I.happy, alpha: I.alpha, crown: v.crown });
+    };
+    if (!I.party) drawHer();
+    if (I.bubble > 0) {
+      const b = I.bubble, r = c * (0.45 + 0.1 * Math.sin(time * 6));
+      ctx.globalAlpha = Math.min(1, b * 3) * (b > 0.75 ? (1 - b) * 4 : 1);
+      ctx.fillStyle = 'rgba(200,240,255,0.25)'; circle(I.bx, I.by, r);
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = Math.max(2, c * 0.04); ctx.beginPath(); ctx.arc(I.bx, I.by, r, 0, TAU); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(I.bx - r * 0.4, I.by - r * 0.45, r * 0.13);
+      ctx.globalAlpha = 1;
+    }
+    drawParts();
+    if (I.party) drawHer();
+    if (v.fog) {
+      drawFogHard(v, lay, lv, time, cx, cy);
+      world();
+      if (v.hint) drawTrail(v.hint.pts, time, v.hint.bright, c);
+      glow(cellX(lay, lv, lv.exit) + c * 0.5, cellY(lay, lv, lv.exit), c * 0.9, 'rgba(255,225,120,0.8)', 0.4 + 0.15 * Math.sin(time * 2.4));
+      for (const kf of v.keysOnFloor) glow(kf.x, kf.y, c * 0.45, KEY_GLOW[kf.k], 0.45 + 0.25 * Math.sin(time * 4 + kf.k));
+      if (I.alpha > 0.02) glow(I.x, I.y, c * 0.5, 'rgba(255,240,210,0.6)', 0.25 * I.alpha);
+    }
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    drawKeySlots(v, time);
+    for (const kf of v.flyKeys) { glow(kf.x, kf.y, 40, KEY_GLOW[kf.k], 0.6); drawKey(kf.x, kf.y, -0.5, kf.sc, KEY_COLORS[kf.k]); }
+  }
+
+  // the golden trophy for finishing Hard 20 (the level select shows it on the sand once she has it)
+  function drawTrophy(x, y, sc, time) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
+    glow(0, -60, 90, 'rgba(255,220,90,0.7)', 0.45 + 0.15 * Math.sin(time * 2.2));
+    const g = ctx.createLinearGradient(-40, 0, 40, 0);
+    g.addColorStop(0, '#d98a00'); g.addColorStop(0.45, '#ffe066'); g.addColorStop(1, '#c77700');
+    ctx.fillStyle = '#8b5a00'; rrect(-34, -14, 68, 14, 4); ctx.fill();
+    ctx.fillStyle = g; rrect(-24, -26, 48, 13, 3); ctx.fill();
+    ctx.fillRect(-7, -48, 14, 24);
+    ctx.lineWidth = 8; ctx.strokeStyle = '#e8a200';
+    ctx.beginPath(); ctx.arc(-38, -88, 15, Math.PI * 0.45, Math.PI * 1.6); ctx.stroke();
+    ctx.beginPath(); ctx.arc(38, -88, 15, Math.PI * 1.4, Math.PI * 0.55); ctx.stroke();
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(-40, -110); ctx.lineTo(40, -110); ctx.quadraticCurveTo(38, -52, 0, -46); ctx.quadraticCurveTo(-38, -52, -40, -110); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(150,80,0,0.6)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(-20, -92, 6, 14, 0.3, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fff6b0'; star(0, -82, 15, 6.5, 5, -Math.PI / 2 + Math.sin(time) * 0.1); ctx.fill();
+    ctx.restore();
+  }
+
   // ---------- the level select's backdrop: a reef along the bottom, Isabella swimming past ----------
+  // o.mode 'hard' gives it deep water and taller waves; o.trophy puts her trophy on the sand beside the chest.
   function drawMenu(time, dt, o) {
-    const th = THEMES[(o && o.theme) || 0];
+    const hard = o && o.mode === 'hard', th = THEMES[hard ? 13 : (o && o.theme) || 0];
     stepParts(dt);
     ctx.setTransform(s, 0, 0, s, 0, 0);
     drawWater(th, time, time * 20);
+    if (hard) {
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      for (let x = 0; x <= VW + 20; x += 20) ctx.lineTo(x, 26 + Math.sin(x / 70 + time * 1.6) * 12 + Math.sin(x / 31 - time) * 4);
+      ctx.lineTo(VW, 0); ctx.closePath(); ctx.fill();
+    }
     drawBubbles(time, time * 20);
     drawSand(th, 506, 3);
     const R = mulberry32(99);
@@ -931,14 +1299,16 @@
       else seaweed(x, 520, 90 + R() * 50, time, '#2f8f5a', x, 6);
     }
     drawChest(VW - 92, 518, 0.18 + 0.12 * Math.sin(time * 2), time, 0.7);
+    if (o && o.trophy) drawTrophy(VW - 190, 522, 0.62, time);
     const span = VW - 300, ph = (time * 60) % (2 * span), fwd = ph < span, x = 150 + (fwd ? ph : 2 * span - ph);
     drawIsabella(x, 450 + Math.sin(time * 2) * 7, time, { scale: 0.78, flip: !fwd, swim: 8, crown: o && o.crown });
     drawParts();
   }
 
   window.MazeArt = {
-    init, resize, toWorld, toCss, layout, cellX, cellY, drawPlay, drawMenu, burst, fountain, clearParticles,
+    init, resize, toWorld, toCss, layout, layoutHard, prepareReef, releaseReef, cellX, cellY, drawPlay, drawPlayHard, drawMenu, burst, fountain, clearParticles,
     get VW() { return VW; }, get scale() { return s; }, get dpr() { return dpr; }, get particles() { return parts.length; },
-    THEMES, KEY_COLORS, ISA_LEN, H,
+    get tiles() { return tileSet ? { made: tileSet.made, kept: tileSet.tiles.size } : null; },
+    THEMES, KEY_COLORS, ISA_LEN, H, HARD_C,
   };
 })();

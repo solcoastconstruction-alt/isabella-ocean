@@ -1,6 +1,7 @@
 // Coral Maze: proves every level can be escaped, and that none can trap her; freezes the levels.
-//   node test/games/maze/verify.js
-// For each of the 20 levels:
+//   node test/games/maze/verify.js            (Easy, then Hard; about a minute and a half)
+//   node test/games/maze/verify.js --easy     (Easy only, a second)
+// For each of the 20 Easy levels and the 20 Hard ones:
 //   - fingerprint: the level built from its seed must be exactly the one frozen below (and the same twice);
 //   - solvable: a search over the FULL state (Isabella's cell, every key and gate, the shell she returns to,
 //     every patrol's position and direction) finds the way out; par = fewest moves (glides) out;
@@ -11,11 +12,17 @@
 //   - in play: every key, patrol and helping current lies on the best way out;
 //   - the rules hold under 2000 random moves per level (resting is safe, a touch only sends her back to her
 //     shell, no swimming through walls, locked gates or against a current);
-//   - the difficulty metric rises from each level to the next, and each new thing arrives on its own, gently.
-// Exits non-zero on any failure.
+//   - Easy: the difficulty metric rises from each level to the next, and each new thing arrives on its own, gently;
+//   - Hard: the difficulty metric (the same one) rises from each level to the next and every Hard level is above
+//     Easy 20; the extended metric `hardness` (logic.js analyze(): + screens she cannot see at once, keys behind
+//     other gates, cells swum twice, waiting for patrols) rises too; each one's best way out is never touched by a
+//     patrol, and a model player (kid.js) gives a rough idea of the minutes each takes.
+// The Hard levels are far bigger (up to a million states), so their searches run on typed arrays (logic.js
+// explore) and their solver is steered by a lower bound (A*); nothing is skipped. Exits non-zero on any failure.
 'use strict';
 const crypto = require('crypto');
 const L = require('../../../web/games/maze/logic.js');
+const K = require('./kid.js');
 
 // Frozen 3 Oct 2026. Changing a level changes stars she may already have earned on it: don't.
 const FROZEN = [
@@ -24,19 +31,30 @@ const FROZEN = [
   'd350a64ee3e7', '5bb009c963ec', '706b8edb18e8', 'a2a0974f3d79', '72b0752b1ccd',
   '371d48d9e0c9', '2bc645538a77', '5e671399ab54', '196c93ebdaaa', 'cefbbaa276a3',
 ];
+// Hard, frozen 3 Oct 2026 (the same rule).
+const FROZEN_HARD = [
+  'd5c372e9d8ae', 'c9963b903dd3', '8960f0881c7e', 'd412fca684a0', 'c97eb18b9a87',
+  '97e3724cdd7d', '8dd5b551cf84', '5a53cd6c0016', '77637c8523d3', 'a6c41a74dbda',
+  '2d06cfada6fc', 'c4696515314b', 'a784ca3e146d', '64f2514e0d4d', 'e11eebf9c74b',
+  'ccbc35e5717b', 'a3add1624f9c', '14781c60564b', '5264f9209260', 'b655e004f702',
+];
 const fingerprint = (lv) => crypto.createHash('sha1').update(L.describe(lv)).digest('hex').slice(0, 12);
+const EASY_ONLY = process.argv.includes('--easy');
 
 let fails = 0;
 const problems = [];
-const bad = (n, what) => { fails++; problems.push(`level ${n}: ${what}`); };
+let tag = 'level';
+const bad = (n, what) => { fails++; problems.push(`${tag} ${n}: ${what}`); };
 
 // An independent search: breadth-first by number of moves, waiting folded into each layer, states as strings.
+// (In Hard, a glide that ends in a touch is not a move, as in the Hard solver.)
 function parByLayers(lv) {
+  const noTouch = lv.mode === 'hard';
   const key = (s) => [s.cell, s.cp, Array.from(s.items).join(','), Array.from(s.pp).join(','), Array.from(s.ps).join(',')].join('|');
   const seen = new Set();
   let layer = [L.newState(lv)];
   seen.add(key(layer[0]));
-  for (let moves = 0; moves < 200 && layer.length; moves++) {
+  for (let moves = 0; moves < 400 && layer.length; moves++) {
     // close the layer under waiting (free)
     if (lv.patrols.length) {
       for (let i = 0; i < layer.length; i++) {
@@ -50,8 +68,9 @@ function parByLayers(lv) {
     for (const s of layer) {
       for (let d = 0; d < 4; d++) {
         if (!L.canPass(lv, s, s.cell, d)) continue;
-        const g = L.cloneState(lv, s);
-        if (L.glide(lv, g, d, -1, null) === 2) return moves + 1;
+        const g = L.cloneState(lv, s), r = L.glide(lv, g, d, -1, null);
+        if (r === 2) return moves + 1;
+        if (r === 1 && noTouch) continue;
         const k = key(g);
         if (!seen.has(k)) { seen.add(k); next.push(g); }
       }
@@ -65,7 +84,7 @@ function parByLayers(lv) {
 function replay(lv, plan) {
   const st = L.newState(lv), out = {};
   let tick = 0, moves = 0, hits = 0, i = 0;
-  while (!st.won && tick < 5000) {
+  while (!st.won && tick < 20000) {
     let input = -1;
     if (st.moving < 0 && i < plan.length && tick >= plan[i].at) { input = plan[i].dir; i++; }
     const r = L.step(lv, st, input, -1, out);
@@ -76,35 +95,36 @@ function replay(lv, plan) {
   return { won: st.won, moves, hits, tick };
 }
 
-const rows = [];
-const t0 = Date.now();
-for (let n = 1; n <= L.LEVELS.length; n++) {
-  const cfg = L.LEVELS[n - 1];
-  const lv = L.build(n), again = L.build(n), fp = fingerprint(lv);
-  if (!lv.ok) bad(n, 'did not build: ' + lv.why);
-  if (fingerprint(again) !== fp) bad(n, 'not deterministic: two builds differ');
-  if (fp !== FROZEN[n - 1]) bad(n, `CHANGED (fingerprint ${fp}, frozen ${FROZEN[n - 1]})`);
-  const a = L.analyze(lv);
-  if (!a.solvable) { bad(n, 'NO WAY OUT'); rows.push({ n, cfg, lv, fp, a }); continue; }
-  if (!a.fair) bad(n, `${a.trapped} trapped state(s), e.g. resting at cell ${a.trapState.cell}`);
-  if (a.par !== cfg.par) bad(n, `par in LEVELS is ${cfg.par} but the solver finds ${a.par}`);
-  const layered = parByLayers(lv);
-  if (layered !== a.par) bad(n, `independent search finds ${layered} moves, solver ${a.par}`);
-  const rp = replay(lv, a.plan);
-  if (!rp.won || rp.moves !== a.par || rp.hits) bad(n, `replayed plan: won=${rp.won} moves=${rp.moves} hits=${rp.hits}`);
-  if (L.starsFor(a.par, rp.moves) !== 3) bad(n, 'the best way out does not earn 3 stars');
-  rows.push({ n, cfg, lv, fp, a, layered, rp });
-}
-
-// Each level's things are really in play: every key lies on the best way out (its gate cannot be avoided),
-// every patrol's lane meets that way, and every current meant to help is ridden on it.
-for (const r of rows) {
-  if (!r.a.plan) continue;
-  const cells = new Set([r.lv.start]);
-  for (const s of r.a.plan) for (const c of s.cells) cells.add(c);
-  r.lv.keys.forEach((k, i) => { if (!cells.has(k.cell)) bad(r.n, `key ${i} is not on the way out`); });
-  r.lv.patrols.forEach((p, j) => { if (!p.cells.some((c) => cells.has(c))) bad(r.n, `patrol ${j} never meets the way out`); });
-  (r.cfg.currents || []).forEach((c, i) => { if (c.mode === 'help' && !r.lv.currents[i].cells.some((x) => cells.has(x))) bad(r.n, `helping current ${i} is not ridden`); });
+function levels(mode, frozen) {
+  const rows = [], LV = L.levelsOf(mode);
+  for (let n = 1; n <= LV.length; n++) {
+    const cfg = LV[n - 1], t0 = Date.now();
+    const lv = L.build(n, mode), again = L.build(n, mode), fp = fingerprint(lv);
+    if (!lv.ok) bad(n, 'did not build: ' + lv.why);
+    if (fingerprint(again) !== fp) bad(n, 'not deterministic: two builds differ');
+    if (fp !== frozen[n - 1]) bad(n, `CHANGED (fingerprint ${fp}, frozen ${frozen[n - 1]})`);
+    const a = L.analyze(lv);
+    if (!a.solvable) { bad(n, 'NO WAY OUT'); rows.push({ n, cfg, lv, fp, a }); continue; }
+    if (!a.fair) bad(n, `${a.trapped} trapped state(s), e.g. resting at cell ${a.trapState.cell}`);
+    if (a.par !== cfg.par) bad(n, `par in the level table is ${cfg.par} but the solver finds ${a.par}`);
+    const layered = parByLayers(lv);
+    if (layered !== a.par) bad(n, `independent search finds ${layered} moves, solver ${a.par}`);
+    const rp = replay(lv, a.plan);
+    if (!rp.won || rp.moves !== a.par || rp.hits) bad(n, `replayed plan: won=${rp.won} moves=${rp.moves} hits=${rp.hits}`);
+    if (L.starsFor(a.par, rp.moves) !== 3) bad(n, 'the best way out does not earn 3 stars');
+    rows.push({ n, cfg, lv, fp, a, layered, rp, ms: Date.now() - t0 });
+  }
+  // Each level's things are really in play: every key lies on the best way out (its gate cannot be avoided),
+  // every patrol's lane meets that way, and every current meant to help is ridden on it.
+  for (const r of rows) {
+    if (!r.a.plan) continue;
+    const cells = new Set([r.lv.start]);
+    for (const s of r.a.plan) for (const c of s.cells) cells.add(c);
+    r.lv.keys.forEach((k, i) => { if (!cells.has(k.cell)) bad(r.n, `key ${i} is not on the way out`); });
+    r.lv.patrols.forEach((p, j) => { if (!p.cells.some((c) => cells.has(c))) bad(r.n, `patrol ${j} never meets the way out`); });
+    (r.cfg.currents || []).forEach((c, i) => { if (c.mode === 'help' && !r.lv.currents[i].cells.some((x) => cells.has(x))) bad(r.n, `helping current ${i} is not ridden`); });
+  }
+  return rows;
 }
 
 // The rules, tried at random in every level (2000 moves each, from a fixed seed so every run is the same):
@@ -113,8 +133,8 @@ for (const r of rows) {
 //   - she only ever swims through open tunnels: never a wall, never a gate before she has its key, never into a
 //     current against its flow; she never rests inside a current; a gate never opens without its key.
 const ruleCount = { moves: 0, ticks: 0, restTicks: 0, touches: 0, taps: 0 };
-function rules(n) {
-  const lv = L.build(n), rng = L.mulberry32(7000 + n), st = L.newState(lv), out = {}, prev = L.newState(lv);
+function rules(n, mode) {
+  const lv = L.build(n, mode), rng = L.mulberry32((mode === 'hard' ? 9000 : 7000) + n), st = L.newState(lv), out = {}, prev = L.newState(lv);
   const fail = (what) => { bad(n, 'rules: ' + what); return true; };
   const reachOf = (j) => { const p = lv.patrols[j]; return Math.hypot(L.patrolX(p, st.pp[j]) - lv.cx[st.cell], L.patrolY(p, st.pp[j]) - lv.cy[st.cell]); };
   const tick = (input, tapTo) => {
@@ -131,7 +151,9 @@ function rules(n) {
       ruleCount.touches++;
       const home = st.cp >= 0 ? lv.shells[st.cp] : lv.start;
       if (st.cell !== home || st.moving >= 0 || st.cp !== prev.cp) return fail('a touch did not send her back to her shell, resting') && -1;
-      if (Array.from(st.items).join() !== Array.from(prev.items).join()) return fail('a touch changed her keys or gates') && -1;
+      // (a gate she was swimming through as she was touched has opened: she had its key)
+      const was = Array.from(prev.items), now = Array.from(st.items);
+      if (now.some((v, i) => v !== was[i] && !(was[i] === L.HELD && v === L.OPEN && out.gate === i))) return fail('a touch changed her keys or gates') && -1;
       return r;
     }
     for (let g = 0; g < lv.gates.length; g++) if (prev.items[g] === L.FLOOR && st.items[g] === L.OPEN) return fail(`gate ${g} opened without its key`) && -1;
@@ -161,7 +183,14 @@ function rules(n) {
     if (r < 0) return;
   }
 }
-for (let n = 1; n <= L.LEVELS.length; n++) rules(n);
+
+const things = (lv) => [lv.keys.length && `${lv.keys.length} key`, lv.patrols.length && `${lv.patrols.length} ${lv.patrols.map((p) => p.kind).join('+')}`, lv.currents.length && `${lv.currents.length} current`, lv.dark && `dark ${lv.dark}`].filter(Boolean).join(', ') || '-';
+
+// ================================ Easy (the twenty she has played, unchanged) ================================
+const t0 = Date.now();
+tag = 'level';
+const rows = levels('easy', FROZEN);
+for (let n = 1; n <= L.LEVELS.length; n++) rules(n, 'easy');
 
 // The difficulty metric must rise from each level to the next.
 for (let i = 1; i < rows.length; i++) {
@@ -186,7 +215,6 @@ if (intro('dark')) { const r = intro('dark'); const ok = r.lv.dark >= 3 && Math.
 for (const k of ['key', 'patrol', 'current', 'dark']) if (!(k in firstAt)) { fails++; problems.push(`no level has a ${k}`); }
 
 // The table.
-const things = (lv) => [lv.keys.length && `${lv.keys.length} key`, lv.patrols.length && `${lv.patrols.length} ${lv.patrols.map((p) => p.kind).join('+')}`, lv.currents.length && `${lv.currents.length} current`, lv.dark && `dark ${lv.dark}`].filter(Boolean).join(', ') || '-';
 console.log('Coral Maze: 20 levels, each searched over its full state (cell, keys, gates, shell, every patrol\'s position and direction)\n');
 console.log('lvl size  seed fingerprint   par cells ticks waits choices spare  difficulty  states  stars3<=  fair  in it');
 for (const r of rows) {
@@ -203,6 +231,72 @@ console.log(`\nindependent breadth-first search agrees on par for ${rows.filter(
   `plans replayed through step() escape in par moves for ${rows.filter((r) => r.rp && r.rp.won && r.rp.moves === r.a.par).length}/${rows.length}; ` +
   `${rows.reduce((s, r) => s + (r.a.states || 0), 0)} reachable states checked for traps (${Date.now() - t0} ms)`);
 console.log(`rules tried at random: ${ruleCount.moves} glides and taps (${ruleCount.taps} taps), ${ruleCount.ticks} ticks, ${ruleCount.restTicks} of them resting, ${ruleCount.touches} touches by a patrol`);
+const easyFails = fails;
+console.log(easyFails ? `\nEASY: ${easyFails} FAILURE(S)` : '\nALL 20 EASY LEVELS PASS: solvable, fair, frozen, difficulty rising (unchanged)');
+
+// ================================ Hard ================================
+if (!EASY_ONLY) {
+  const t1 = Date.now();
+  tag = 'hard';
+  Object.assign(ruleCount, { moves: 0, ticks: 0, restTicks: 0, touches: 0, taps: 0 });
+  const easy20 = rows[rows.length - 1].a;
+  const hard = levels('hard', FROZEN_HARD);
+  for (let n = 1; n <= L.HARD_LEVELS.length; n++) rules(n, 'hard');
+  // harder than all of Easy, and harder level by level, by the Easy metric and by the extended one
+  for (const r of hard) if (!(r.a.difficulty > easy20.difficulty)) bad(r.n, `difficulty ${r.a.difficulty} is not above Easy 20's ${easy20.difficulty}`);
+  for (let i = 1; i < hard.length; i++) {
+    if (!(hard[i].a.difficulty > hard[i - 1].a.difficulty)) bad(hard[i].n, `difficulty ${hard[i].a.difficulty} does not rise above hard ${hard[i - 1].n}'s ${hard[i - 1].a.difficulty}`);
+    if (!(hard[i].a.hardness > hard[i - 1].a.hardness)) bad(hard[i].n, `hardness ${hard[i].a.hardness} does not rise above hard ${hard[i - 1].n}'s ${hard[i - 1].a.hardness}`);
+  }
+  // the big-maze things every Hard level is built from: bigger than a screen; keys fetched in order with the last
+  // gate near the way out (so the way that leads almost to the sea is shut until she has the last key)
+  for (const r of hard) {
+    const lv = r.lv;
+    if (!(r.a.screens > 0.5)) bad(r.n, `fits too easily on the screen (${r.a.screens} screens more than one)`);
+    if (!lv.gates.length) { bad(r.n, 'no gate'); continue; }
+    const last = lv.gates[lv.gates.length - 1], at = lv.path.indexOf(last.b) / (lv.path.length - 1);
+    r.lastAt = at;
+    if (!(at >= 0.7)) bad(r.n, `the last gate is only ${Math.round(at * 100)}% along the way out`);
+    if (lv.keys.length > 1 && r.a.order !== lv.keys.length - 1) bad(r.n, `${r.a.order} of ${lv.keys.length} keys behind another gate (expected all but the first)`);
+  }
+  // the model player's minutes
+  for (const r of hard) r.kid = K.play(r.lv);
+  for (const r of hard) if (!r.kid.won) bad(r.n, 'the model player could not finish');
+  const mins = (s) => (s / 60).toFixed(1);
+  if (hard[0].kid.won && !(hard[0].kid.seconds >= 60 && hard[0].kid.seconds <= 180)) bad(1, `the model player takes ${mins(hard[0].kid.seconds)} min, not 1-3`);
+  const lastK = hard[hard.length - 1].kid;
+  if (lastK.won && !(lastK.seconds >= 300)) bad(hard.length, `the model player takes ${mins(lastK.seconds)} min, under 5`);
+
+  const mech = (lv) => {
+    const cur = {};
+    (lv.cfg.currents || []).forEach((c) => { cur[c.mode] = (cur[c.mode] || 0) + 1; });
+    return [
+      lv.keys.length && `${lv.keys.length} key${lv.keys.length > 1 ? 's in order' : ''}`,
+      lv.patrols.length && lv.patrols.map((p, j) => `${p.kind} (${lv.cfg.patrols[j].mode})`).join(' + '),
+      Object.keys(cur).length && 'currents: ' + Object.entries(cur).map(([m, k]) => `${k > 1 ? k + ' ' : ''}${m === 'loop' ? 'one-way ring' : m}`).join(', '),
+      lv.dark && `dark ${lv.dark}`,
+    ].filter(Boolean).join('; ');
+  };
+  console.log('\n\nCoral Maze HARD: 20 levels, each searched over its full state; the view scrolls (tunnels stay ' + L.HARD_CELL + ' units, about 15vh)\n');
+  console.log('lvl  size seed fingerprint   par choices spare difficulty hardness screens order again waits   states  fair  last gate  model      mechanics');
+  for (const r of hard) {
+    const a = r.a;
+    console.log(
+      String(r.n).padStart(3), `${r.cfg.w}x${r.cfg.h}`.padStart(5), String(r.cfg.seed).padStart(4), ' ' + r.fp + (r.fp === FROZEN_HARD[r.n - 1] ? ' ' : '!'),
+      String(a.par).padStart(4), String(a.choices || 0).padStart(7), String(a.spare || 0).padStart(5), String(a.difficulty || '-').padStart(10), String(a.hardness || '-').padStart(8),
+      String(a.screens).padStart(7), String(a.order).padStart(5), String(a.again).padStart(5), String(a.waits).padStart(5), String(a.states || 0).padStart(8),
+      (a.fair ? ' yes' : '  NO').padStart(5), `${Math.round((r.lastAt || 0) * 100)}% along`.padStart(10), `${mins(r.kid.seconds)} min`.padStart(8), '   ' + mech(r.lv),
+    );
+  }
+  console.log(`\nEasy 20's difficulty is ${easy20.difficulty}; Hard runs ${hard[0].a.difficulty} -> ${hard[hard.length - 1].a.difficulty} (hardness ${hard[0].a.hardness} -> ${hard[hard.length - 1].a.hardness}), par ${hard[0].a.par} -> ${hard[hard.length - 1].a.par}`);
+  console.log(`model player (kid.js: sees about a screenful, never enters a dead end she can see, ${K.KNOW} s a glide on a known way, ${K.LOOK} s exploring): ` +
+    `${mins(hard[0].kid.seconds)} min at Hard 1 to ${mins(lastK.seconds)} min at Hard 20 (for comparison, all of Easy: ${mins(rows.reduce((s, r) => s + K.play(r.lv).seconds, 0))} min)`);
+  console.log(`independent breadth-first search agrees on par for ${hard.filter((r) => r.layered === r.a.par).length}/${hard.length} levels; ` +
+    `plans replayed through step() escape in par moves, never touched, for ${hard.filter((r) => r.rp && r.rp.won && r.rp.moves === r.a.par && !r.rp.hits).length}/${hard.length}; ` +
+    `${hard.reduce((s, r) => s + (r.a.states || 0), 0)} reachable states (${hard.reduce((s, r) => s + (r.a.moves || 0), 0)} moves between them) checked for traps (${Date.now() - t1} ms)`);
+  console.log(`rules tried at random: ${ruleCount.moves} glides and taps (${ruleCount.taps} taps), ${ruleCount.ticks} ticks, ${ruleCount.restTicks} of them resting, ${ruleCount.touches} touches by a patrol`);
+}
+
 if (problems.length) console.log('\n' + problems.map((p) => 'FAIL ' + p).join('\n'));
-console.log(fails ? `\n${fails} FAILURE(S)` : '\nALL 20 LEVELS PASS: solvable, fair, frozen, difficulty rising');
+console.log(fails ? `\n${fails} FAILURE(S)` : `\nALL ${EASY_ONLY ? 20 : 40} LEVELS PASS: solvable, fair, frozen, difficulty rising${EASY_ONLY ? '' : '; every Hard level harder than Easy 20'}`);
 process.exit(fails ? 1 : 0);

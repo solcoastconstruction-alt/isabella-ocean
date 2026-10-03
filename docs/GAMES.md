@@ -8,7 +8,7 @@ are made in code. The title screen ("hub", `web/index.html`) shows them as five 
 | Bubble Party | `web/games/pop/` | 3–5 | 10 | all free | `game.pop.save` | `test/games/pop/` |
 | Isabella the Mermaid | `web/` (`core.js`, `render.js`, `audio.js`, `app.js`) | 5–8 | 20 | levels 1–10 free; 11–20 unlock (see PAYMENTS.md) | `isabella.save` | `test/verify.js` |
 | Shell Match | `web/games/match/` | 5–8 | 6 | all free | `game.match.save` | `test/games/match/` |
-| Coral Maze | `web/games/maze/` | 5–8 | 20 | all free | `isabella.maze` | `test/games/maze/` |
+| Coral Maze | `web/games/maze/` | 5–8+ | 20 Easy + 20 Hard | all free | `isabella.maze` | `test/games/maze/` |
 | Sea Words | `web/games/words/` | 5–8 | endless (easy, medium, hard) | all free | `game.words.save` | `test/games/words/` |
 
 In the family app everything is unlocked. Saves go through `window.IsabellaStore`, which is Android
@@ -93,6 +93,19 @@ Speed is in world units per second on a 540-tall screen: about 11 s to cross at 
   - **17–20:** dark water, where she lights only the tunnels near her.
 - **Stars:** awarded for a short route, never for speed. A hint trail appears after 20 s without progress.
 - **Proof:** `test/games/maze/verify.js` searches every state of every level, including keys, gates, the last shell and each patrol's phase. It proves each level escapable and free of dead ends, cross-checks par with a second search, and freezes the levels by fingerprint.
+- **Hard mode** (added 3 Oct, after the 6-year-old finished all 20 Easy levels in minutes):
+  - A fish/shark picker on the level select chooses Easy or Hard.
+  - **20 Hard levels** on mazes 2–3 screens across (20×9 up to 29×13 cells). The view scrolls with Isabella, and tunnels stay a comfortable size.
+  - **Harder to solve, not just longer:**
+    - keys must be fetched in order, because each gate guards the pocket holding the next key;
+    - the last gate sits near the exit, so the obvious route is locked;
+    - one-way current rings and against-currents force planning;
+    - patrols need timing;
+    - dark water from Hard 14.
+  - **Difficulty:** Hard 1 scores 88 against Easy 20's 60, rising to 284 at Hard 20.
+  - **Play time:** a model player takes about 1.4 minutes on Hard 1 and about 7 on Hard 20. These are estimates; watch a real child.
+  - **Hints** appear after 45 s in Hard.
+  - **Save:** `isabella.maze` keeps Easy's `unlocked` and `stars` untouched and adds `hard` and `mode` beside them, so old saves need no conversion.
 
 ## Sea Words (added 3 Oct 2026)
 - **How it plays:** a word search where every word comes with its picture. The child drags a line from a word's first letter to its last.

@@ -53,6 +53,37 @@
     { w: 12, h: 6, bias: 0.55, loops: 3, theme: 19, dark: 2.5, keys: [{ gate: [0.4, 0.8], key: 'branch', depth: 3 }], currents: [{ mode: 'against', len: 3 }], patrols: [{ mode: 'path', len: 4, kind: 'puffer' }], seed: 15, par: 24 },
   ];
 
+  // Hard: twenty more levels, much bigger than the screen (the view follows her), built by generateHard().
+  //   chain   keys she must fetch in order: key 0 lies free in a long dead end; gate k shuts the only way into a
+  //           pocket of the maze where key k+1 lies; the last gate stands on the way out, near its end
+  //           (`last` = where along the way, `pocket` = how many cells a pocket may have, `depth` = how far off the
+  //           way key 0 lies)
+  //   currents as in Easy, plus 'loop': a one-way stretch on a ring of tunnels, so the ring goes round one way only
+  // `seed` and `par` were picked by test/games/maze/seeds-hard.js and are checked by test/games/maze/verify.js.
+  const C1 = (n, pocket) => ({ n, last: [0.72, 0.95], pocket: pocket || [5, 30], depth: 3 });
+  const HARD_LEVELS = [
+    { w: 20, h: 9, bias: 0.6, loops: 4, theme: 0, chain: C1(1), currents: [{ mode: 'loop', len: 3 }], seed: 1, par: 42 },
+    { w: 21, h: 9, bias: 0.6, loops: 4, theme: 2, chain: C1(1), currents: [{ mode: 'loop', len: 3 }], patrols: [{ mode: 'side', len: 3, kind: 'jelly' }], seed: 6, par: 41 },
+    { w: 21, h: 10, bias: 0.6, loops: 5, theme: 3, chain: C1(2, [5, 20]), currents: [{ mode: 'help', len: 3 }], seed: 66, par: 49 },
+    { w: 22, h: 10, bias: 0.6, loops: 6, theme: 10, chain: C1(1), currents: [{ mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }], patrols: [{ mode: 'path', len: 3, kind: 'puffer' }], seed: 2, par: 56 },
+    { w: 22, h: 10, bias: 0.6, loops: 5, theme: 11, chain: C1(2, [5, 22]), currents: [{ mode: 'loop', len: 3 }], patrols: [{ mode: 'cross', len: 3, kind: 'jelly' }], seed: 24, par: 63 },
+    { w: 23, h: 10, bias: 0.6, loops: 6, theme: 6, chain: C1(2, [5, 24]), currents: [{ mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }], seed: 97, par: 64 },
+    { w: 23, h: 11, bias: 0.6, loops: 6, theme: 12, chain: C1(3, [5, 18]), currents: [{ mode: 'help', len: 3 }], seed: 13, par: 72 },
+    { w: 24, h: 11, bias: 0.6, loops: 6, theme: 4, chain: C1(2, [5, 26]), currents: [{ mode: 'loop', len: 3 }], patrols: [{ mode: 'path', len: 4, kind: 'puffer' }], seed: 24, par: 66 },
+    { w: 24, h: 11, bias: 0.6, loops: 7, theme: 9, chain: C1(3, [5, 20]), currents: [{ mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }], seed: 77, par: 80 },
+    { w: 25, h: 11, bias: 0.6, loops: 7, theme: 13, chain: C1(3, [5, 22]), currents: [{ mode: 'loop', len: 3 }], patrols: [{ mode: 'cross', len: 3, kind: 'jelly' }], seed: 11, par: 77 },
+    { w: 25, h: 12, bias: 0.6, loops: 7, theme: 14, chain: C1(2, [5, 28]), currents: [{ mode: 'loop', len: 3 }, { mode: 'help', len: 3 }], patrols: [{ mode: 'path', len: 3, kind: 'jelly' }, { mode: 'cross', len: 3, kind: 'puffer' }], seed: 19, par: 82 },
+    { w: 26, h: 12, bias: 0.6, loops: 8, theme: 5, chain: C1(3, [5, 24]), currents: [{ mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }, { mode: 'loop', len: 3 }], seed: 17, par: 95 },
+    { w: 26, h: 12, bias: 0.6, loops: 8, theme: 16, chain: C1(3, [5, 24]), currents: [{ mode: 'loop', len: 3 }, { mode: 'against', len: 3, ring: true }], patrols: [{ mode: 'path', len: 4, kind: 'puffer' }], seed: 65, par: 98 },
+    { w: 24, h: 11, bias: 0.6, loops: 6, theme: 7, dark: 3.2, chain: C1(2, [5, 24]), currents: [{ mode: 'loop', len: 3 }], seed: 321, par: 106 },
+    { w: 25, h: 11, bias: 0.6, loops: 7, theme: 18, dark: 3.0, chain: C1(3, [5, 20]), currents: [{ mode: 'loop', len: 3 }], patrols: [{ mode: 'cross', len: 3, kind: 'jelly' }], seed: 239, par: 107 },
+    { w: 26, h: 12, bias: 0.6, loops: 7, theme: 8, dark: 3.0, chain: C1(3, [5, 24]), currents: [{ mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }], seed: 517, par: 115 },
+    { w: 27, h: 12, bias: 0.6, loops: 8, theme: 15, dark: 2.9, chain: C1(3, [5, 24]), currents: [{ mode: 'loop', len: 3 }, { mode: 'help', len: 3 }], patrols: [{ mode: 'path', len: 3, kind: 'jelly' }], seed: 65, par: 126 },
+    { w: 28, h: 12, bias: 0.6, loops: 8, theme: 17, dark: 2.8, chain: C1(3, [5, 26]), currents: [{ mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }], patrols: [{ mode: 'cross', len: 3, kind: 'puffer' }, { mode: 'path', len: 3, kind: 'jelly' }], seed: 86, par: 122 },
+    { w: 28, h: 13, bias: 0.6, loops: 9, theme: 1, dark: 2.7, chain: C1(3, [5, 28]), currents: [{ mode: 'loop', len: 3 }, { mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }], patrols: [{ mode: 'path', len: 4, kind: 'puffer' }], seed: 28, par: 131 },
+    { w: 29, h: 13, bias: 0.6, loops: 9, theme: 19, dark: 2.6, chain: C1(3, [6, 30]), currents: [{ mode: 'against', len: 3, ring: true }, { mode: 'loop', len: 3 }, { mode: 'loop', len: 3 }], patrols: [{ mode: 'path', len: 3, kind: 'puffer' }, { mode: 'cross', len: 3, kind: 'jelly' }], seed: 136, par: 138 },
+  ];
+
   // ---------------------------------------------------------------- randomness (as in Shell Match)
   function mulberry32(a) {
     return function () {
@@ -252,6 +283,12 @@
       if (spec.mode === 'help' && !(onPath === len && forward)) continue;
       if (spec.mode === 'against' && !(onPath === len && backward)) continue;
       if (spec.mode === 'decoy' && (onPath > 0 || pos[after] >= 0)) continue;
+      if (spec.mode === 'loop' || spec.ring) {
+        // on a ring of tunnels (no stretch of it is the only way between two parts of the maze), so she can always
+        // get round the other way ('loop' anywhere; 'against' with `ring`, Hard only, always has a way round)
+        const br = lv.bridges || (lv.bridges = bridges(lv));
+        if (all.some((x, k) => k < all.length - 1 && br[x * 4 + r.d])) continue;
+      }
       cands.push({ cells: r.cells, dir: r.d, after });
     }
     if (!cands.length) return fail(lv, 'no spot for a ' + spec.mode + ' current');
@@ -305,6 +342,119 @@
     }
   }
 
+  // Every tunnel that is the only way between two parts of the maze (a "bridge": shut it and the maze falls in two).
+  // Returns flags by cell * 4 + direction, both ways round. (Tarjan's bridge search, without recursion.)
+  function bridges(lv) {
+    const N = lv.N, disc = new Int32Array(N).fill(-1), low = new Int32Array(N), up = new Int32Array(N).fill(-1);
+    const next = new Uint8Array(N), out = new Uint8Array(N * 4), stack = [];
+    let t = 0;
+    for (let s = 0; s < N; s++) {
+      if (disc[s] >= 0) continue;
+      disc[s] = low[s] = t++; stack.push(s);
+      while (stack.length) {
+        const c = stack[stack.length - 1];
+        if (next[c] < 4) {
+          const d = next[c]++;
+          if (!(lv.open[c] & (1 << d))) continue;
+          const m = lv.nb[c * 4 + d];
+          if (m < 0) continue;
+          if (up[c] >= 0 && m === up[c] >> 2 && d === OPP[up[c] & 3]) continue;   // the tunnel she came in by
+          if (disc[m] < 0) { disc[m] = low[m] = t++; up[m] = c * 4 + d; stack.push(m); }
+          else if (disc[m] < low[c]) low[c] = disc[m];
+        } else {
+          stack.pop();
+          const e = up[c];
+          if (e < 0) continue;
+          const p = e >> 2;
+          if (low[c] < low[p]) low[p] = low[c];
+          if (low[c] > disc[p]) { out[e] = 1; out[c * 4 + OPP[e & 3]] = 1; }
+        }
+      }
+    }
+    return out;
+  }
+  // Hard: keys fetched in order (see HARD_LEVELS). Built from the way out backwards: the last gate on a bridge near
+  // the end of the way; then, inside what she can reach with it shut, a pocket (cut off by one bridge, holding
+  // nothing else) for the key that opens it, shut by the gate before; and so on, until key 0, which lies free.
+  function placeChain(lv, spec, rng, used) {
+    const n = spec.n, path = lv.path, br = lv.bridges || (lv.bridges = bridges(lv));
+    const lo = Math.max(2, Math.floor(path.length * spec.last[0])), hi = Math.min(path.length - 3, Math.ceil(path.length * spec.last[1]));
+    const lastAt = [];
+    for (let i = lo; i <= hi; i++) {
+      const a = path[i], b = path[i + 1];
+      if (!used[a] && !used[b] && br[a * 4 + dirBetween(lv, a, b)]) lastAt.push(i);
+    }
+    if (!lastAt.length) return fail(lv, 'no spot for the last gate');
+    const gi = pick(lastAt, rng), gates = new Array(n), keyCells = new Array(n);
+    gates[n - 1] = [path[gi], path[gi + 1]];
+    used[path[gi]] = used[path[gi + 1]] = 1;
+    const onPath = new Uint8Array(lv.N);
+    for (const c of path) onPath[c] = 1;
+    // the farthest cell of a region from cell b (a dead end if it can be), and how far
+    const deepest = (inside, b) => {
+      const dist = new Int16Array(lv.N).fill(-1), q = [b];
+      dist[b] = 0;
+      let best = b;
+      for (let qi = 0; qi < q.length; qi++) {
+        const c = q[qi];
+        if (dist[c] > dist[best] || (dist[c] === dist[best] && degree(lv.open[c]) === 1 && degree(lv.open[best]) !== 1)) best = c;
+        for (let d = 0; d < 4; d++) {
+          if (!(lv.open[c] & (1 << d))) continue;
+          const m = lv.nb[c * 4 + d];
+          if (m < 0 || dist[m] >= 0 || !inside[m]) continue;
+          dist[m] = dist[c] + 1; q.push(m);
+        }
+      }
+      return { cell: best, dist: dist[best] };
+    };
+    for (let k = n - 2; k >= 0; k--) {
+      const shut = gates.slice(k + 1);
+      const reach = region(lv, lv.start, shut), cands = [];
+      for (let a = 0; a < lv.N; a++) {
+        if (!reach[a] || used[a]) continue;
+        for (let d = 0; d < 4; d++) {
+          if (!(lv.open[a] & (1 << d)) || !br[a * 4 + d]) continue;
+          const b = lv.nb[a * 4 + d];
+          if (b < 0 || !reach[b] || used[b] || onPath[b]) continue;
+          const pocket = region(lv, b, shut.concat([[a, b]]));
+          if (pocket[lv.start]) continue;
+          let size = 0, clash = false;
+          for (let c = 0; c < lv.N; c++) if (pocket[c]) { size++; if (used[c]) clash = true; }
+          if (clash || size < spec.pocket[0] || size > spec.pocket[1]) continue;
+          const far = deepest(pocket, b);
+          if (far.dist < (spec.keyDepth || 2)) continue;
+          cands.push({ a, b, key: far.cell });
+        }
+      }
+      if (!cands.length) return fail(lv, 'no pocket for key ' + (k + 1));
+      const c = pick(cands, rng);
+      gates[k] = [c.a, c.b]; keyCells[k + 1] = c.key;
+      used[c.a] = used[c.b] = used[c.key] = 1;
+    }
+    // key 0: in a dead end at least `depth` cells off the way, reachable with every gate shut
+    const reach = region(lv, lv.start, gates), dist = new Int16Array(lv.N).fill(-1), q = [];
+    for (const c of path) if (reach[c]) { dist[c] = 0; q.push(c); }
+    for (let qi = 0; qi < q.length; qi++) {
+      const c = q[qi];
+      for (let d = 0; d < 4; d++) {
+        if (!(lv.open[c] & (1 << d))) continue;
+        const m = lv.nb[c * 4 + d];
+        if (m < 0 || dist[m] >= 0 || !reach[m] || gates.some((g) => (g[0] === c && g[1] === m) || (g[0] === m && g[1] === c))) continue;
+        dist[m] = dist[c] + 1; q.push(m);
+      }
+    }
+    const pool = [];
+    for (let c = 0; c < lv.N; c++) if (reach[c] && !used[c] && dist[c] >= (spec.depth || 2) && degree(lv.open[c]) === 1) pool.push(c);
+    if (!pool.length) return fail(lv, 'no spot for key 0');
+    keyCells[0] = pick(pool, rng);
+    used[keyCells[0]] = 1;
+    for (let k = 0; k < n; k++) {
+      const [a, b] = gates[k];
+      lv.gates.push({ a, b, dir: dirBetween(lv, a, b) });
+      lv.keys.push({ cell: keyCells[k] });
+    }
+  }
+
   // Lookup tables used every tick.
   function finish(lv) {
     const { W, N } = lv;
@@ -347,17 +497,46 @@
     finish(lv);
     return lv;
   }
-  function build(n) {
-    const cfg = LEVELS[n - 1];
-    if (!cfg) throw new Error('no level ' + n);
-    const lv = generate(cfg, cfg.seed);
-    lv.n = n; lv.par = cfg.par;
+  // A Hard level: the same pieces, bigger, with keys fetched in order (placeChain) and one-way rings ('loop' currents).
+  // Its own stream of random numbers, so no Easy level can change because of it.
+  function generateHard(cfg, seed) {
+    const W = cfg.w, H = cfg.h, N = W * H, rng = rngFor(((seed >>> 0) ^ 0x51ED270B) >>> 0);
+    const nb = neighbours(W, H);
+    const open = carve(W, H, nb, rng, cfg.bias);
+    if (cfg.loops) addLoops(W, H, nb, open, rng, cfg.loops);
+    // she starts on the left; the way out is on the right, a good way up or down from her
+    const sy = Math.floor(rng() * H), rows = [];
+    for (let y = 0; y < H; y++) if (Math.abs(y - sy) >= Math.ceil(H / 3)) rows.push(y);
+    const ey = pick(rows, rng);
+    const lv = {
+      cfg, seed: seed >>> 0, W, H, N, nb, open, start: sy * W, exit: ey * W + W - 1, path: null, mode: 'hard',
+      keys: [], gates: [], currents: [], patrols: [], shells: [], dark: cfg.dark || 0, theme: cfg.theme || 0, ok: true, why: '',
+    };
+    lv.path = cellPath(lv, lv.start, lv.exit);
+    const used = new Uint8Array(N);
+    used[lv.start] = used[lv.exit] = 1;
+    if (cfg.chain) placeChain(lv, cfg.chain, rng, used);
+    for (const c of cfg.currents || []) if (lv.ok) placeCurrent(lv, c, rng, used);
+    for (const p of cfg.patrols || []) if (lv.ok) placePatrol(lv, p, rng, used);
+    if (lv.ok && lv.patrols.length) placeShells(lv, used);
+    finish(lv);
     return lv;
   }
-  // Everything that makes up a level, for its fingerprint (test/games/maze/verify.js).
+  const MODES = ['easy', 'hard'];
+  const levelsOf = (mode) => (mode === 'hard' ? HARD_LEVELS : LEVELS);
+  function build(n, mode) {
+    const hard = mode === 'hard', cfg = (hard ? HARD_LEVELS : LEVELS)[n - 1];
+    if (!cfg) throw new Error('no ' + (hard ? 'hard ' : '') + 'level ' + n);
+    const lv = hard ? generateHard(cfg, cfg.seed) : generate(cfg, cfg.seed);
+    lv.n = n; lv.par = cfg.par; lv.mode = hard ? 'hard' : 'easy';
+    return lv;
+  }
+  // Everything that makes up a level, for its fingerprint (test/games/maze/verify.js). (A Hard level says so too.)
   function describe(lv) {
-    return JSON.stringify([lv.W, lv.H, Array.from(lv.open), lv.start, lv.exit, lv.keys.map((k) => k.cell), lv.gates.map((g) => [g.a, g.b]),
-      lv.currents.map((c) => [c.cells, c.dir]), lv.patrols.map((p) => [p.cells, p.p0, p.s0, p.kind]), lv.shells, lv.dark]);
+    const parts = [lv.W, lv.H, Array.from(lv.open), lv.start, lv.exit, lv.keys.map((k) => k.cell), lv.gates.map((g) => [g.a, g.b]),
+      lv.currents.map((c) => [c.cells, c.dir]), lv.patrols.map((p) => [p.cells, p.p0, p.s0, p.kind]), lv.shells, lv.dark];
+    if (lv.mode === 'hard') parts.push('hard');
+    return JSON.stringify(parts);
   }
 
   // ---------------------------------------------------------------- one tick
@@ -548,92 +727,236 @@
   };
   Object.defineProperty(Heap.prototype, 'size', { get() { return this.p.length; } });
 
+  // A lower bound on what is left, for searching the big Hard levels quickly (A*): from each (cell, keys and gates),
+  // the fewest glides out and then the fewest ticks, with the patrols left out, in the solver's own units
+  // (BIG per glide + 1 per tick). A Hard way out is never touched by a patrol (see solve), so each of its glides ends
+  // just where it would with no patrols at all, and waiting only adds ticks: so this never overestimates, and no move
+  // lowers it by more than the move costs (the search stays exact). Worked out for every cell and every way the keys
+  // can be (not only those the glides from the start reach), since a tap can leave her anywhere.
+  function bound(lv) {
+    if (!lv._bound) boundJob(lv).step(Infinity);
+    return lv._bound;
+  }
+  const clockNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  // The same, a little at a time (for the game's hint): step(until) works until performance.now() passes `until`,
+  // and returns true once lv._bound is ready.
+  function boundJob(lv) {
+    if (lv._bound) return { step: () => true };
+    const N = lv.N, K = lv.keys.length, I = Math.pow(3, K);
+    const ghost = Object.assign({}, lv, { patrols: [] }), g = newState(ghost), res = { ticks: 0 };
+    const ic = (items) => { let v = 0; for (let k = K - 1; k >= 0; k--) v = v * 3 + items[k]; return v; };
+    const node = (cell, items) => ic(items) * N + cell;
+    const total = I * N, INF = BIG * (1 << 30);
+    const eFrom = new IntList(), eTo = new IntList(), eCost = new IntList(), WIN = -1, items = new Int8Array(K);
+    let v = 0, dist = null, head = null, nxt = null, heap = null;
+    return {
+      step(until) {
+        if (lv._bound) return true;
+        // every glide from every (cell, keys and gates), with no patrols
+        for (; v < total; v++) {
+          if (until !== Infinity && (v & 63) === 63 && clockNow() > until) return false;
+          const cell = v % N;
+          let x = Math.floor(v / N);
+          for (let k = 0; k < K; k++) { items[k] = x % 3; x = Math.floor(x / 3); }
+          for (let d = 0; d < 4; d++) {
+            g.cell = cell; g.items.set(items); g.cp = -1; g.moving = -1; g.carried = false; g.stopAt = -1; g.won = false;
+            if (!canPass(ghost, g, cell, d)) continue;
+            res.ticks = 0;
+            const r = glide(ghost, g, d, -1, res);
+            eFrom.push(v); eTo.push(r === 2 ? WIN : node(g.cell, g.items)); eCost.push(res.ticks);
+          }
+        }
+        // cheapest way out from each, walking the moves backwards from the sea (Dijkstra)
+        if (!heap) {
+          dist = new Float64Array(total).fill(INF); head = new Int32Array(total).fill(-1); nxt = new Int32Array(eFrom.n); heap = new Heap();
+          for (let e = 0; e < eFrom.n; e++) {
+            const f = eFrom.a[e], t = eTo.a[e], c = BIG + eCost.a[e];
+            if (t === WIN) { if (c < dist[f]) { dist[f] = c; heap.push(c, f); } continue; }
+            nxt[e] = head[t]; head[t] = e;
+          }
+        }
+        for (let n = 0; heap.size; n++) {
+          if (until !== Infinity && (n & 255) === 255 && clockNow() > until) return false;
+          const [c, t] = heap.pop();
+          if (c > dist[t]) continue;
+          for (let e = head[t]; e >= 0; e = nxt[e]) { const f = eFrom.a[e], c2 = c + BIG + eCost.a[e]; if (c2 < dist[f]) { dist[f] = c2; heap.push(c2, f); } }
+        }
+        const d2 = dist;
+        lv._bound = { dist: d2, INF, of: (st) => d2[node(st.cell, st.items)] };
+        return true;
+      },
+    };
+  }
+
   // Fewest moves (glides) out from a resting state, and among those the quickest. Waiting is free (a move is
   // a swipe). Returns { par, ticks, steps: [{ dir, at, ticks, cells }] } with `at` the tick (counted from st0's
   // tick, `t0`) at which each glide must start, or null if there is no way out.
+  // Easy levels are searched cheapest-first (Dijkstra); Hard ones are far bigger, so their search is steered by
+  // bound() (A*), which finds a way out just as short, and just as quick, much sooner.
+  // In Hard the way out is also one no patrol ever touches: a touch sends her back to her shell, which the search
+  // could otherwise use as a shortcut, and a hint must never say "swim into the jellyfish".
   function solve(lv, st0, t0, opts) {
+    const s = search(lv, st0, t0, opts);
+    s.step(Infinity);
+    return s.result;
+  }
+  // The same search, a little at a time (the game's hint in a big Hard level runs over several frames, so nothing
+  // stutters): step(pops, until) works through at most `pops` states, or until performance.now() passes `until`,
+  // and returns true once the search is over; then .result is what solve() returns. (Make lv's bound first, with
+  // boundJob, if that too should not hold up a frame.)
+  function search(lv, st0, t0, opts) {
     opts = opts || {};
     const C = codec(lv), start = st0 ? cloneState(lv, st0) : newState(lv);
     start.moving = -1; start.carried = false; start.stopAt = -1;
+    const hard = lv.mode === 'hard';
+    const B = hard && !opts.plain ? bound(lv) : null, h = B ? (s) => B.of(s) : () => 0;
     const k0 = C.enc(start), best = new Map([[k0, 0]]), from = new Map(), heap = new Heap();
     const st = newState(lv), tmp = newState(lv), res = { ticks: 0 }, waits = lv.patrols.length > 0;
     let win = null, popped = 0;
-    heap.push(0, k0);
-    const relax = (k2, c2, k, act) => {
+    const S = { done: false, result: null, popped: 0 };
+    const relax = (k2, c2, k, act, s2) => {
       const b = best.get(k2);
-      if (b === undefined || c2 < b) { best.set(k2, c2); from.set(k2, [k, act]); heap.push(c2, k2); }
+      if (b === undefined || c2 < b) { best.set(k2, c2); from.set(k2, [k, act]); heap.push(c2 + h(s2), k2); }
     };
-    while (heap.size) {
-      const [cost, key] = heap.pop();
-      if (cost > best.get(key)) continue;
-      if (win && cost >= win.cost) break;
-      if (opts.limit && ++popped > opts.limit) return null;
-      C.dec(key, st);
-      if (waits) { copyState(tmp, st); step(lv, tmp, -1, -1, null); relax(C.enc(tmp), cost + 1, key, -1); }
-      for (let d = 0; d < 4; d++) {
-        if (!canPass(lv, st, st.cell, d)) continue;
-        copyState(tmp, st); res.ticks = 0;
-        const r = glide(lv, tmp, d, -1, res), c2 = cost + BIG + res.ticks;
-        if (r === 2) { if (!win || c2 < win.cost) win = { cost: c2, key, d }; continue; }
-        relax(C.enc(tmp), c2, key, d);
+    const conclude = () => {
+      S.done = true; S.popped = popped;
+      if (!win) return true;
+      const acts = [win.d];
+      for (let k = win.key; k !== k0;) { const f = from.get(k); acts.push(f[1]); k = f[0]; }
+      acts.reverse();
+      // replay to find when each glide starts and where it goes
+      const run = cloneState(lv, start), steps = [];
+      let t = t0 || 0;
+      for (const a of acts) {
+        if (a < 0) { step(lv, run, -1, -1, null); t++; continue; }
+        const g = { ticks: 0, cells: [] }, at = t;
+        glide(lv, run, a, -1, g);
+        steps.push({ dir: a, at, ticks: g.ticks, cells: g.cells });
+        t += g.ticks;
       }
-    }
-    if (!win) return null;
-    const acts = [win.d];
-    for (let k = win.key; k !== k0;) { const f = from.get(k); acts.push(f[1]); k = f[0]; }
-    acts.reverse();
-    // replay to find when each glide starts and where it goes
-    const run = cloneState(lv, start), steps = [];
-    let t = t0 || 0;
-    for (const a of acts) {
-      if (a < 0) { step(lv, run, -1, -1, null); t++; continue; }
-      const g = { ticks: 0, cells: [] }, at = t;
-      glide(lv, run, a, -1, g);
-      steps.push({ dir: a, at, ticks: g.ticks, cells: g.cells });
-      t += g.ticks;
-    }
-    return { par: Math.floor(win.cost / BIG), ticks: win.cost % BIG, steps, states: best.size };
+      S.result = { par: Math.floor(win.cost / BIG), ticks: win.cost % BIG, steps, states: best.size };
+      return true;
+    };
+    S.step = (pops, until) => {
+      if (S.done) return true;
+      for (let n = 0; heap.size; n++) {
+        if (n >= pops || (until && (n & 31) === 31 && clockNow() > until)) return false;
+        const [f, key] = heap.pop();
+        if (win && f >= win.cost) break;
+        C.dec(key, st);
+        const cost = best.get(key);
+        if (f > cost + h(st)) continue;
+        if (opts.limit && ++popped > opts.limit) { S.done = true; S.popped = popped; return true; }
+        if (waits) { copyState(tmp, st); step(lv, tmp, -1, -1, null); relax(C.enc(tmp), cost + 1, key, -1, tmp); }
+        for (let d = 0; d < 4; d++) {
+          if (!canPass(lv, st, st.cell, d)) continue;
+          copyState(tmp, st); res.ticks = 0;
+          const r = glide(lv, tmp, d, -1, res), c2 = cost + BIG + res.ticks;
+          if (r === 2) { if (!win || c2 < win.cost) win = { cost: c2, key, d }; continue; }
+          if (r === 1 && hard) continue;
+          relax(C.enc(tmp), c2, key, d, tmp);
+        }
+      }
+      return conclude();
+    };
+    if (B && h(start) >= B.INF) { S.done = true; return S; }
+    heap.push(h(start), k0);
+    return S;
   }
+
+  // A set of resting states (their codec numbers), each given an id in the order first seen: open addressing over
+  // typed arrays, so the biggest Hard levels (millions of states) fit in memory and stay quick.
+  function StateIds() { this.cap = 1 << 12; this.k = new Float64Array(this.cap).fill(-1); this.v = new Int32Array(this.cap); this.codes = new Float64Array(1 << 12); this.n = 0; }
+  StateIds.prototype.slot = function (code) {
+    const lo = code % 4294967296, hi = Math.floor(code / 4294967296), mask = this.cap - 1;
+    let h = (Math.imul(lo | 0, 0x9E3779B1) ^ Math.imul(hi | 0, 0x85EBCA77)) >>> 0;
+    h = (h ^ (h >>> 15)) & mask;
+    while (this.k[h] !== -1 && this.k[h] !== code) h = (h + 1) & mask;
+    return h;
+  };
+  StateIds.prototype.id = function (code) {
+    let h = this.slot(code);
+    if (this.k[h] === code) return this.v[h];
+    if ((this.n + 1) * 2 > this.cap) { this.grow(); h = this.slot(code); }
+    const i = this.n++;
+    if (i >= this.codes.length) { const c = new Float64Array(this.codes.length * 2); c.set(this.codes); this.codes = c; }
+    this.codes[i] = code; this.k[h] = code; this.v[h] = i;
+    return i;
+  };
+  StateIds.prototype.get = function (code) { const h = this.slot(code); return this.k[h] === code ? this.v[h] : -1; };
+  StateIds.prototype.grow = function () {
+    const n = this.n;
+    this.cap *= 2; this.k = new Float64Array(this.cap).fill(-1); this.v = new Int32Array(this.cap);
+    for (let i = 0; i < n; i++) { const h = this.slot(this.codes[i]); this.k[h] = this.codes[i]; this.v[h] = i; }
+  };
+  // a growable list of whole numbers
+  function IntList(n) { this.a = new Int32Array(n || 1024); this.n = 0; }
+  IntList.prototype.push = function (x) { if (this.n === this.a.length) { const b = new Int32Array(this.a.length * 2); b.set(this.a); this.a = b; } this.a[this.n++] = x; };
 
   // Every resting state she can get into from the start (by glides, taps and waiting), and whether each one
   // can still get out. A fair level has no state she can get into but not out of.
+  // (A tap along a straight run stops early on the very path a longer tap takes, so each run is swum once and
+  // every cell on it read off as it passes: the same states and moves as tapping each cell in turn.)
   function explore(lv, opts) {
     opts = opts || {};
-    const C = codec(lv), ids = new Map(), keys = [], eFrom = [], eTo = [], st = newState(lv), tmp = newState(lv);
-    const cells = new Uint8Array(lv.N + 1), res = { ticks: 0, cells: null };
-    const id = (k) => { let i = ids.get(k); if (i === undefined) { i = keys.length; ids.set(k, i); keys.push(k); } return i; };
-    id(C.enc(newState(lv)));
+    const C = codec(lv), ids = new StateIds(), st = newState(lv), tmp = newState(lv), snap = newState(lv), N = lv.N;
+    const cells = new Uint8Array(N + 1), res = { ticks: 0, cells: [] }, onRun = new Int32Array(N + 1).fill(-1);
+    const off = new IntList(1024), to = new IntList(4096), WIN = -1;
+    ids.id(C.enc(newState(lv)));
     let wins = 0;
-    const WIN = -1;
-    for (let i = 0; i < keys.length; i++) {
-      C.dec(keys[i], st);
+    for (let i = 0; i < ids.n; i++) {
+      C.dec(ids.codes[i], st);
+      off.push(to.n);
       cells[st.cell] = 1;
-      const add = (r) => { eFrom.push(i); eTo.push(r === 2 ? WIN : id(C.enc(tmp))); if (r === 2) wins++; };
-      if (lv.patrols.length) { copyState(tmp, st); step(lv, tmp, -1, -1, null); add(0); }
+      const add = (r, s) => { if (r === 2) { to.push(WIN); wins++; } else to.push(ids.id(C.enc(s))); };
+      if (lv.patrols.length) { copyState(tmp, st); step(lv, tmp, -1, -1, null); add(0, tmp); }
       for (let d = 0; d < 4; d++) {
         if (!canPass(lv, st, st.cell, d)) continue;
-        copyState(tmp, st); res.cells = []; const r = glide(lv, tmp, d, -1, res);
+        copyState(tmp, st); res.cells.length = 0; const r = glide(lv, tmp, d, -1, res);
         for (const c of res.cells) cells[c] = 1;
-        add(r);
-        if (opts.taps) for (const target of tapRun(lv, st, st.cell, d)) { copyState(tmp, st); add(glide(lv, tmp, d, target, null)); }
+        add(r, tmp);
+        if (!opts.taps) continue;
+        const run = tapRun(lv, st, st.cell, d);
+        if (!run.length) continue;
+        for (let k = 0; k < run.length; k++) onRun[run[k]] = d;
+        // swim the whole run once, as a tap on its last cell would, and take each cell on it as it is reached
+        copyState(tmp, st);
+        let rr = step(lv, tmp, d, run[run.length - 1], null), left = run.length;
+        for (;;) {
+          if (rr === 1) { for (; left > 0; left--) add(1, tmp); break; }       // touched: every tap further on ends the same
+          if (rr === 2) { add(2, tmp); left--; break; }
+          if (onRun[tmp.cell] === d) { copyState(snap, tmp); snap.moving = -1; snap.carried = false; snap.stopAt = -1; add(0, snap); left--; }
+          if (tmp.moving < 0 || left === 0) break;
+          rr = step(lv, tmp, -1, -1, null);
+        }
+        for (let k = 0; k < run.length; k++) onRun[run[k]] = -1;
+        if (left > 0) throw new Error('explore: a tap run ended early');
       }
-      if (opts.limit && keys.length > opts.limit) return null;
+      if (opts.limit && ids.n > opts.limit) return null;
     }
+    off.push(to.n);
     // which states can still reach the sea: walk the moves backwards from it
-    const n = keys.length, canWin = new Uint8Array(n), head = new Int32Array(n + 1).fill(-1), nxt = new Int32Array(eFrom.length);
-    const q = [];
-    for (let e = 0; e < eFrom.length; e++) {
-      if (eTo[e] === WIN) { if (!canWin[eFrom[e]]) { canWin[eFrom[e]] = 1; q.push(eFrom[e]); } continue; }
-      nxt[e] = head[eTo[e]]; head[eTo[e]] = e;
+    const n = ids.n, canWin = new Uint8Array(n), E = to.n, O = off.a, T = to.a;
+    const indeg = new Int32Array(n + 1);
+    for (let e = 0; e < E; e++) if (T[e] >= 0) indeg[T[e] + 1]++;
+    for (let i = 0; i < n; i++) indeg[i + 1] += indeg[i];
+    const back = new Int32Array(Math.max(1, indeg[n])), fill = indeg.slice(0, n);
+    const q = new Int32Array(n);
+    let qn = 0;
+    for (let i = 0; i < n; i++) {
+      for (let e = O[i]; e < O[i + 1]; e++) {
+        if (T[e] === WIN) { if (!canWin[i]) { canWin[i] = 1; q[qn++] = i; } } else back[fill[T[e]]++] = i;
+      }
     }
-    for (let qi = 0; qi < q.length; qi++) {
-      for (let e = head[q[qi]]; e >= 0; e = nxt[e]) { const f = eFrom[e]; if (!canWin[f]) { canWin[f] = 1; q.push(f); } }
+    for (let qi = 0; qi < qn; qi++) {
+      const x = q[qi];
+      for (let e = indeg[x]; e < indeg[x + 1]; e++) { const f = back[e]; if (!canWin[f]) { canWin[f] = 1; q[qn++] = f; } }
     }
     let trapped = 0, firstTrap = -1;
     for (let i = 0; i < n; i++) if (!canWin[i]) { trapped++; if (firstTrap < 0) firstTrap = i; }
     let reach = 0;
-    for (let c = 0; c < lv.N; c++) reach += cells[c];
-    return { states: n, moves: eFrom.length, wins, trapped, trapState: firstTrap >= 0 ? C.dec(keys[firstTrap], newState(lv)) : null, cellsReached: reach };
+    for (let c = 0; c < N; c++) reach += cells[c];
+    return { states: n, moves: E, wins, trapped, trapState: firstTrap >= 0 ? C.dec(ids.codes[firstTrap], newState(lv)) : null, cellsReached: reach };
   }
 
   // How hard a level is, from the solver's best way out:
@@ -643,33 +966,52 @@
   //   spare   cells she can reach that are not on that way (dead ends and long ways round to get lost in)
   //   things  4 per key and gate, 4 per patrol, 3 per current, and dark water 6 + 6 / (how far she can see)
   // difficulty = par + 0.8 x choices + 0.15 x spare + things
+  //
+  // That measures the way out well, but not two things that make the Hard levels hard: she cannot see the whole maze,
+  // and she has to plan. So `hardness` adds to it (the Easy levels all fit on one screen, so for them it adds only
+  // their little planning and waiting; the Easy seeds were picked by difficulty alone, which stays as it was):
+  //   screens  how many more screens the maze fills than one (at the Hard tunnel size), +4 each: the part she cannot
+  //            see is the part she has to explore and remember
+  //   order    keys she can only reach through another gate, +3 each: the order has to be worked out
+  //   again    cells the best way out swims through more than once (back for a key, round a one-way ring), +0.2 each
+  //   waits    ticks the best way out waits for a patrol, +0.05 each (timing)
+  // hardness = difficulty + 4 x screens + 3 x order + 0.2 x again + 0.05 x waits
+  const HARD_CELL = 84;                   // the Hard tunnel size, in world units (the screen is 540 tall) (art.js)
+  const SCREEN_CELLS = (1200 / HARD_CELL) * (540 / HARD_CELL);   // cells on one 20:9 screen at that size
   function analyze(lv, opts) {
     const sol = solve(lv);
-    const ex = explore(lv, { taps: !(opts && opts.noTaps) });
+    const ex = explore(lv, { taps: !(opts && opts.noTaps), limit: opts && opts.limit });
     if (!sol) return { ok: false, solvable: false, explore: ex };
+    if (!ex) return { ok: false, solvable: true, fair: false, tooBig: true, par: sol.par };
     let choices = 0, cell = lv.start, cameFrom = -1, waits = 0, t = 0;
-    const on = new Uint8Array(lv.N + 1);
-    on[lv.start] = 1;
+    const on = new Uint8Array(lv.N + 1), times = new Uint16Array(lv.N + 1);
+    on[lv.start] = 1; times[lv.start] = 1;
     const st = newState(lv);
     for (const s of sol.steps) {
       while (t < s.at) { step(lv, st, -1, -1, null); t++; waits++; }
       for (let d = 0; d < 4; d++) if (d !== s.dir && d !== cameFrom && canPass(lv, st, cell, d)) choices++;
       glide(lv, st, s.dir, -1, null);
       t += s.ticks;
-      for (const c of s.cells) on[c] = 1;
+      for (const c of s.cells) { on[c] = 1; times[c]++; }
       const before = s.cells.length > 1 ? s.cells[s.cells.length - 2] : cell, last = dirBetween(lv, before, st.cell);
       cameFrom = OPP[last >= 0 ? last : s.dir];
       cell = st.cell;
     }
-    let onWay = 0;
-    for (let c = 0; c < lv.N; c++) onWay += on[c];
+    let onWay = 0, again = 0;
+    for (let c = 0; c < lv.N; c++) { onWay += on[c]; if (times[c] > 1) again += times[c] - 1; }
     const cells = sol.steps.reduce((a, s) => a + s.ticks, 0);
     const spare = Math.max(0, ex.cellsReached - onWay);
     const things = 4 * lv.keys.length + 4 * lv.patrols.length + 3 * lv.currents.length + (lv.dark ? 6 + 6 / lv.dark : 0);
     const difficulty = sol.par + 0.8 * choices + 0.15 * spare + things;
+    // keys behind another gate: not reachable from the start with every gate shut
+    const free = region(lv, lv.start, lv.gates.map((g) => [g.a, g.b]));
+    const order = lv.keys.filter((k) => !free[k.cell]).length;
+    const screens = Math.max(0, lv.N / SCREEN_CELLS - 1);
+    const hardness = difficulty + 4 * screens + 3 * order + 0.2 * again + 0.05 * waits;
     return {
       ok: true, solvable: true, fair: ex.trapped === 0, par: sol.par, ticks: sol.ticks, cells, waits, choices, spare, things,
       difficulty: Math.round(difficulty * 10) / 10, states: ex.states, trapped: ex.trapped, trapState: ex.trapState, plan: sol.steps,
+      screens: Math.round(screens * 100) / 100, order, again, hardness: Math.round(hardness * 10) / 10, moves: ex.moves,
     };
   }
 
@@ -684,9 +1026,9 @@
   }
 
   const api = {
-    LEVELS, UP, RIGHT, DOWN, LEFT, DX, DY, OPP, DIRS, P, HIT, SHY, FLOOR, HELD, OPEN,
-    mulberry32, rngFor, generate, build, describe, newState, copyState, cloneState,
-    canPass, blockedBy, shouldStop, step, glide, tapRun, touch, patrolX, patrolY, solve, explore, analyze,
+    LEVELS, HARD_LEVELS, MODES, levelsOf, HARD_CELL, SCREEN_CELLS, UP, RIGHT, DOWN, LEFT, DX, DY, OPP, DIRS, P, HIT, SHY, FLOOR, HELD, OPEN,
+    mulberry32, rngFor, generate, generateHard, build, describe, newState, copyState, cloneState, bridges, region, cellPath,
+    canPass, blockedBy, shouldStop, step, glide, tapRun, touch, patrolX, patrolY, solve, search, bound, boundJob, explore, analyze,
     starsFor, threeStarMax, twoStarMax,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
