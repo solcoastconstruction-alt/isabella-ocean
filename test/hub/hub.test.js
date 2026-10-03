@@ -1,83 +1,392 @@
-// The title screen as a game picker: Isabella, Bubble Party and Shell Match, and back again.
-// Real mouse taps in headless Chrome (port 9454). Run: node test/hub/hub.test.js
+// The title screen ("hub") and its "+" (more games) screen, in headless Chrome with real touch input
+// through the DevTools protocol (Input.dispatchTouchEvent, port 9454).
+//   node test/hub/hub.test.js [--web <dir>] [--out <screenshots dir>] [--profile <chrome profile dir>]
+//
+// At 915x412 (the Seeker) and 800x360, in both flavors, with and without "Add to Home screen":
+//   - the title shows a game, Isabella's big Play button, a game, then "+"; Play is the biggest, every
+//     button is at least 19vh, and nothing overlaps the sound, coin, Add-to-Home or Grown-ups controls;
+//   - "+" opens the more-games screen; every game opens and comes back; the back button and
+//     window.__back (Android's back) close it;
+//   - the list in web/hub.js is the only wiring: the two recipes written there (move a line; add a
+//     symbol and a line) are carried out on a copy of hub.js and the screens follow;
+//   - the "+" screen holds 1 to 18 games (six dummy lines make eight; dummies exist only in this test);
+//   - Isabella's own title: Play, the 4-second hold on the logo, the coin count, the sound button.
+// Layout only at 1335x600 and 1024x768. Exits 1 on any failed check or JavaScript exception.
+'use strict';
+const fs = require('fs');
 const path = require('path');
-const os = require('os');
+const { pathToFileURL } = require('url');
 const { launch, sleep } = require('../paywall/cdp.js');
 
+const argv = process.argv.slice(2);
+const arg = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const ROOT = path.resolve(__dirname, '../..');
-const PAGE = 'file://' + path.join(ROOT, 'web/index.html');
-const OUT = path.join(os.tmpdir(), 'isabella-hub');
-let pass = 0, fail = 0;
-const check = (ok, what) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`); ok ? pass++ : fail++; };
+const WEB = path.resolve(arg('web', path.join(ROOT, 'web')));
+const OUT = path.resolve(arg('out', path.join(ROOT, '.local/shots')));
+const PROFILE = path.resolve(arg('profile', path.join(ROOT, '.local/chrome-hub')));
+const VARIANTS = path.join(path.dirname(PROFILE), 'hub-variants');
+const PORT = 9454;
+
+// The owner's choice for the title: these two games beside Isabella's Play button, the rest behind "+".
+const ON_TITLE = ['pop', 'maze'];
+const SAVE = { unlocked: 1, stars: [], gold: 137, muted: false, played: false };
+const COLORS = ['blue', 'teal', 'pink', 'purple', 'green', 'coral', 'indigo'];
+
+let cdp, pass = 0, fail = 0;
+const check = (ok, what) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`); if (ok) pass++; else fail++; return !!ok; };
+// A step that throws (a button that is covered, a page that never loads) is a failed check, not a crash.
+async function attempt(what, fn) {
+  try { return await fn(); } catch (e) { check(false, `${what}: ${String(e.message).split('\n')[0]}`); return null; }
+}
+const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+const url = (web, page) => pathToFileURL(path.join(web, page)).href;
+
+// ---- the page ----
+async function open(web, { family = false, pin = false, save = SAVE } = {}) {
+  const src = `try { localStorage.setItem('isabella.save', ${JSON.stringify(JSON.stringify(save))}); } catch (e) {}`
+    + (family ? "window.IsabellaFlavor = 'family';" : '')
+    // The Android app's bridge (both flavors have it): the launcher can pin, and the icon isn't there yet.
+    + (pin ? 'window.__pinCalls = 0; window.IsabellaApp = { canPin: () => true, isPinned: () => false, pinToHome() { window.__pinCalls++; } };' : '');
+  const { identifier } = await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: src });
+  await cdp.navigate(url(web, 'index.html'));
+  await cdp.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  await title();
+}
+async function title() {
+  await cdp.waitFor("window.__dbg && __dbg.mode === 'title'", 8000, 'the title screen');
+  await sleep(250);
+}
+const viewport = (w, h) => cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: true });
+// One finger down on the middle of the element and up again. Fails if anything covers it.
+async function touch(selector, ms = 50) {
+  const { x, y } = await cdp.center(selector);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1, radiusX: 10, radiusY: 10, force: 1 }] });
+  await sleep(ms);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(80);
+}
+const stored = () => cdp.eval("JSON.parse(localStorage.getItem('isabella.save') || 'null')");
+const mode = () => cdp.eval('__dbg.mode');
+async function openMore() {
+  await touch('#moreBtn');
+  await cdp.waitFor("__dbg.mode === 'more'", 3000, 'the "+" screen');
+  await sleep(150);
+}
+
+// ---- measuring: every visible button and control, in CSS px ----
+const MEASURE = `(() => {
+  const vis = (el) => !!el && el.getClientRects().length > 0;
+  const box = (el) => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
+  const btn = (b) => Object.assign({ id: b.id, game: b.dataset.game || null, label: b.getAttribute('aria-label') || '', text: b.textContent.trim() }, box(b));
+  const one = (sel) => { const el = document.querySelector(sel); return vis(el) ? box(el) : null; };
+  return {
+    W: innerWidth, H: innerHeight, scrollW: document.documentElement.scrollWidth, mode: __dbg.mode,
+    row: [...document.querySelectorAll('#games button')].filter(vis).map(btn),
+    grid: [...document.querySelectorAll('#moreGrid button')].filter(vis).map(btn),
+    back: one('#moreBack'), sound: one('#soundBtn'), coins: one('#title .gold'), logo: one('#logo'), pin: one('#pinBtn'), grownups: one('#parentBtn'),
+    buttons: [...document.querySelectorAll('button')].filter(vis).map((b) => b.id || b.className),
+  };
+})()`;
+const measure = () => cdp.eval(MEASURE);
+const vh = (b, m) => (Math.min(b.w, b.h) / m.H) * 100;
+const inside = (b, m) => b.l >= -0.5 && b.t >= -0.5 && b.r <= m.W + 0.5 && b.b <= m.H + 0.5;
+const hit = (a, b) => a.l < b.r - 0.5 && b.l < a.r - 0.5 && a.t < b.b - 0.5 && b.t < a.b - 0.5;
+function overlaps(named) {
+  const out = [];
+  for (let i = 0; i < named.length; i++) for (let j = i + 1; j < named.length; j++) if (hit(named[i][1], named[j][1])) out.push(`${named[i][0]} over ${named[j][0]}`);
+  return out;
+}
+
+// The title: [game] [PLAY] [game] [+], and the other controls around them.
+async function checkTitle(tag, games, { family = false, pin = false } = {}) {
+  const m = await measure();
+  const want = [`${games[0].id}Btn`, 'playBtn', `${games[1].id}Btn`, 'moreBtn'];
+  const row = [...m.row].sort((a, b) => a.l - b.l), ids = row.map((b) => b.id);
+  const others = ['soundBtn'].concat(pin ? ['pinBtn'] : [], family ? [] : ['parentBtn']);
+  check(same(ids, want) && row.filter((b) => b.game).length === 2 && same([...m.buttons].sort(), [...want, ...others].sort()),
+    `${tag}: the title shows three game buttons and "+", left to right ${ids.join(', ')}; no other button but ${others.join(', ')}`);
+  const play = row.find((b) => b.id === 'playBtn'), sizes = row.map((b) => vh(b, m));
+  const mid = play && row.length === 4 && Math.abs((play.l + play.r) / 2 - (row[0].l + row[2].r) / 2) < 1 && m.logo && Math.abs((play.l + play.r) / 2 - (m.logo.l + m.logo.r) / 2) < 1;
+  check(!!play && row.every((b) => b === play || (play.w > b.w + 1 && play.h > b.h + 1)) && sizes.every((s) => s >= 19) && mid,
+    `${tag}: Play is the biggest, in the middle of the three and under the logo; every button is at least 19vh (${sizes.map((s) => s.toFixed(1)).join(' / ')} vh)`);
+  const named = row.map((b) => [b.id, b]).concat(['sound', 'coins', 'logo', 'pin', 'grownups'].filter((k) => m[k]).map((k) => [k, m[k]]));
+  const off = named.filter(([, b]) => !inside(b, m)).map(([n]) => n), over = overlaps(named);
+  check(named.length === 4 + 3 + (pin ? 1 : 0) + (family ? 0 : 1) && !off.length && !over.length && m.scrollW <= m.W,
+    `${tag}: ${named.map(([n]) => n).join(', ')}: all on screen, none overlapping${off.length ? `; off screen: ${off.join(', ')}` : ''}${over.length ? `; overlapping: ${over.join(', ')}` : ''}`);
+  check(row.length > 0 && row.every((b) => b.label && !b.text), `${tag}: no reading: each is a picture with an aria label (${row.map((b) => b.label).join(', ')})`);
+}
+
+// What is wrong with the "+" screen as measured (nothing, if it is a tidy grid that fits).
+function moreProblems(m) {
+  const out = [], g = m.grid;
+  if (!g.length || !m.back) return ['nothing to measure'];
+  const small = g.filter((b) => vh(b, m) < 19).length;
+  if (small) out.push(`${small} under 19vh (${Math.min(...g.map((b) => vh(b, m))).toFixed(1)}vh)`);
+  if (vh(m.back, m) < 19) out.push(`back button ${vh(m.back, m).toFixed(1)}vh`);
+  const named = g.map((b) => [b.id, b]).concat([['back', m.back]]);
+  const off = named.filter(([, b]) => !inside(b, m)).map(([n]) => n);
+  if (off.length) out.push(`off screen: ${off.join(', ')}`);
+  const over = overlaps(named);
+  if (over.length) out.push(`overlapping: ${over.slice(0, 3).join(', ')}`);
+  if (m.scrollW > m.W) out.push('sideways scroll');
+  if (g.some((b) => Math.abs(b.w - g[0].w) > 0.5 || Math.abs(b.h - b.w) > 0.5)) out.push('buttons differ in size');
+  const rows = [];
+  for (const b of g) { const r = rows.find((x) => Math.abs(x[0].t - b.t) < 1); if (r) r.push(b); else rows.push([b]); }
+  if (rows.some((r) => Math.abs((Math.min(...r.map((b) => b.l)) + Math.max(...r.map((b) => b.r))) / 2 - m.W / 2) > 1)) out.push('a row is off centre');
+  if (rows.some((r, i) => (i < rows.length - 1 ? r.length !== rows[0].length : r.length > rows[0].length))) out.push(`ragged rows (${rows.map((r) => r.length).join('+')})`);
+  return out;
+}
+const shape = (m) => {
+  const tops = [...new Set(m.grid.map((b) => Math.round(b.t)))];
+  return `${tops.map((t) => m.grid.filter((b) => Math.round(b.t) === t).length).join('+')} at ${m.grid.length ? vh(m.grid[0], m).toFixed(1) : '?'}vh`;
+};
+async function checkMore(tag, ids) {
+  const m = await measure();
+  const reading = [...m.grid].sort((a, b) => (Math.abs(a.t - b.t) > 1 ? a.t - b.t : a.l - b.l)).map((b) => b.game);
+  check(m.mode === 'more' && same(reading, ids) && same(m.buttons, ['moreBack', ...ids.map((id) => `${id}Btn`)]),
+    `${tag}: the "+" screen shows ${ids.length} games in the list's order (${reading.slice(0, 4).join(', ')}${reading.length > 4 ? ', …' : ''}) and a back button; nothing else`);
+  const bad = moreProblems(m);
+  check(!bad.length && m.grid.every((b) => b.label && !b.text),
+    `${tag}: a tidy grid, ${shape(m)}; back button ${m.back ? vh(m.back, m).toFixed(1) : '?'}vh; nothing overlaps or leaves the screen${bad.length ? `; ${bad.join('; ')}` : ''}`);
+  return m;
+}
+
+// Press a game's button with a finger; its page must load; Android's back must return to the title.
+async function playAndReturn(tag, web, g, { viaMore, wiped } = {}) {
+  await attempt(`${tag}: ${g.label}`, async () => {
+    if (viaMore) await openMore();
+    if (wiped) await cdp.eval("localStorage.removeItem('isabella.save'); 1");
+    await touch(`#${g.id}Btn`);
+    const want = url(web, g.page);
+    await cdp.waitFor(`location.href === ${JSON.stringify(want)} && document.readyState === 'complete' && typeof window.__back === 'function'`, 8000, `${g.page} to load`);
+    await sleep(400);
+    if (wiped) {
+      const s = await stored();
+      check(!!s && s.gold === SAVE.gold, `${tag}: Isabella's save is written before leaving for ${g.label} (gold ${s ? s.gold : 'missing'})`);
+    }
+    const handled = await cdp.eval('window.__back()');
+    await title();
+    const here = await cdp.eval('location.href');
+    check(handled === true && here === url(web, 'index.html'), `${tag}: ${g.label} opens from ${viaMore ? 'the "+" screen' : 'the title'} (${g.page}) and back returns to the title`);
+  });
+}
+
+// A copy of the web folder with some files rewritten (everything else is a link to the real file):
+// how the test carries out hub.js's two recipes without shipping anything.
+function variant(name, edits) {
+  const dir = path.join(VARIANTS, name);
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  for (const f of fs.readdirSync(WEB)) {
+    if (edits[f]) fs.writeFileSync(path.join(dir, f), edits[f](fs.readFileSync(path.join(WEB, f), 'utf8')));
+    else fs.symlinkSync(path.join(WEB, f), path.join(dir, f));
+  }
+  return dir;
+}
+// The lines of the game list in hub.js, as written.
+const LINE = /^[ \t]*\{ id: '[^']+',.*\},[ \t]*\n/gm;
+const dummyLine = (i) => `    { id: 'dummy${i}', page: 'games/pop/index.html', symbol: 'i-dummy', label: 'Dummy ${i}' },\n`;
+const DUMMY_SYMBOL = '<symbol id="i-dummy" viewBox="0 0 24 24"><path d="M12 2l3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1z" fill="#fff"/></symbol>';
+const withSymbol = (html) => html.replace('</defs>', `  ${DUMMY_SYMBOL}\n  </defs>`);
 
 (async () => {
-  const cdp = await launch({ port: 9454, profile: path.join(OUT, 'profile') });
+  // Another test's Chrome on this port would be driven by mistake (Coral Maze's tests share 9454).
+  const busy = await fetch(`http://127.0.0.1:${PORT}/json/version`).then(() => true, () => false);
+  if (busy) { console.error(`DevTools port ${PORT} is in use: another browser test is running. Try again when it has finished.`); process.exit(1); }
+  fs.rmSync(PROFILE, { recursive: true, force: true });
+  fs.mkdirSync(OUT, { recursive: true });
+  cdp = await launch({ port: PORT, profile: PROFILE, width: 915, height: 412 });
   const errors = [];
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
-  cdp.on('Runtime.exceptionThrown', (p) => errors.push(p.exceptionDetails.exception?.description || p.exceptionDetails.text));
-  const where = () => cdp.eval('location.pathname');
-  const title = async () => {
-    await cdp.waitFor("window.__dbg && __dbg.mode === 'title'", 8000, 'the title screen');
-    await sleep(300);
-  };
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  cdp.on('Runtime.exceptionThrown', (p) => errors.push((p.exceptionDetails.exception && p.exceptionDetails.exception.description) || p.exceptionDetails.text));
+  const shot = async (name) => console.log('      shot', path.relative(ROOT, await cdp.shot(path.join(OUT, `${name}.png`))));
 
-  for (const [w, h] of [[1335, 600], [1024, 768], [800, 360]]) {
-    await cdp.viewport(w, h);
-    await cdp.navigate(PAGE);
-    await title();
-    const sizes = await cdp.eval(`['popBtn','playBtn','matchBtn','mazeBtn','wordsBtn'].map((id) => { const b = document.getElementById(id).getBoundingClientRect(); return Math.round(Math.min(b.width, b.height) / innerHeight * 1000) / 10; })`);
-    check(sizes.every((s) => s >= 19), `${w}x${h}: five game buttons, each at least 19vh (${sizes.join(' / ')} vh)`);
-    const fit = await cdp.eval(`(() => { const ids = ['popBtn','playBtn','matchBtn','mazeBtn','wordsBtn'], r = ids.map((id) => document.getElementById(id).getBoundingClientRect());
-      return { inside: r.every((b) => b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight), apart: r.every((b, i) => i === 0 || b.left >= r[i - 1].right), scroll: document.body.scrollWidth <= innerWidth }; })()`);
-    check(fit.inside && fit.apart && fit.scroll, `${w}x${h}: the five buttons sit on screen, side by side, with no sideways scroll`);
-    console.log('      shot', await cdp.shot(path.join(OUT, `title-${w}x${h}.png`)));
+  // ---- the list itself ----
+  console.log('\n# The game list (web/hub.js)');
+  await viewport(915, 412);
+  await open(WEB);
+  const GAMES = await cdp.eval('IsabellaHub.GAMES.map((g) => ({ id: g.id, page: g.page, symbol: g.symbol, label: g.label, color: g.color || null }))');
+  const html = fs.readFileSync(path.join(WEB, 'index.html'), 'utf8'), appJs = fs.readFileSync(path.join(WEB, 'app.js'), 'utf8');
+  const hubJs = fs.readFileSync(path.join(WEB, 'hub.js'), 'utf8'), lines = hubJs.match(LINE) || [];
+  check(GAMES.length >= 4 && lines.length === GAMES.length && same(GAMES.slice(0, 2).map((g) => g.id), ON_TITLE),
+    `the list has ${GAMES.length} games, one line each; the first two (${GAMES.slice(0, 2).map((g) => g.label).join(', ')}) are the title's`);
+  const flaws = [];
+  for (const g of GAMES) {
+    if (!/^[a-z][a-z0-9]*$/.test(g.id || '') || GAMES.filter((x) => x.id === g.id).length !== 1) flaws.push(`${g.id}: id missing, odd or used twice`);
+    if (!g.page || !fs.existsSync(path.join(WEB, g.page))) flaws.push(`${g.id}: no page at ${g.page}`);
+    if (!g.symbol || !html.includes(`<symbol id="${g.symbol}"`)) flaws.push(`${g.id}: no <symbol id="${g.symbol}"> in index.html`);
+    if (!g.label || !String(g.label).trim()) flaws.push(`${g.id}: no label`);
+    if (g.color && !COLORS.includes(g.color)) flaws.push(`${g.id}: unknown colour ${g.color}`);
   }
-  await cdp.viewport(1335, 600);
-  await cdp.navigate(PAGE);
-  await title();
+  check(!flaws.length, `every line has a unique id, a page that exists, a <symbol> that exists, a label and a known colour${flaws.length ? `: ${flaws.join('; ')}` : ''}`);
+  // Hand-wiring would be a game's page named outside the list, or a game-sized button written into
+  // index.html (it has two of its own: "+" and the back button).
+  const strays = [html, appJs].map((s) => (s.match(/games\/[\w-]+\/index\.html/g) || []).length);
+  const written = (html.match(/<button[^>]*class="[^"]*\bgame\b/g) || []).length;
+  check(strays[0] === 0 && strays[1] === 0 && written === 2,
+    `the list is the only wiring: index.html and app.js name no game page (${strays.join(' and ')} found), and index.html writes no game button itself (${written} game-sized buttons: "+" and back)`);
+  const titleGames = GAMES.slice(0, 2), moreGames = GAMES.slice(2);
 
-  await cdp.tap('#popBtn');
-  await cdp.waitFor("location.pathname.endsWith('/games/pop/index.html') && !!window.__popDebug", 8000, 'Bubble Party to load');
-  check((await where()).endsWith('/games/pop/index.html'), 'Bubble Party opens from its button');
-  await sleep(800);
-  console.log('      shot', await cdp.shot(path.join(OUT, 'pop.png')));
-  await cdp.eval('window.__back()');
-  await title();
-  check((await where()).endsWith('/web/index.html'), 'back from Bubble Party returns to the picker');
+  // ---- every size, both flavors ----
+  for (const [w, h] of [[915, 412], [800, 360]]) {
+    const at = `${w}x${h}`;
+    console.log(`\n# ${at}: the title in both flavors`);
+    await viewport(w, h);
+    for (const family of [false, true]) {
+      for (const pin of [true, false]) {
+        const tag = `${at} ${family ? 'family' : 'store'}${pin ? ' + Add to Home' : ''}`;
+        await open(WEB, { family, pin });
+        await checkTitle(tag, titleGames, { family, pin });
+        await shot(`title-${family ? 'family' : 'store'}${pin ? '-pin' : ''}-${at}`);
+      }
+    }
 
-  await cdp.tap('#matchBtn');
-  await cdp.waitFor("location.pathname.endsWith('/games/match/index.html') && !!window.__matchDebug", 8000, 'Shell Match to load');
-  check((await where()).endsWith('/games/match/index.html'), 'Shell Match opens from its button');
-  await sleep(800);
-  console.log('      shot', await cdp.shot(path.join(OUT, 'match.png')));
-  await cdp.eval('window.__back()');
-  await title();
-  check((await where()).endsWith('/web/index.html'), 'back from Shell Match returns to the picker');
+    console.log(`\n# ${at}: Isabella's own title (store flavor, in the Android app)`);
+    await open(WEB, { pin: true });
+    check((await cdp.eval("document.getElementById('goldTotal').textContent")) === String(SAVE.gold), `${at}: the coin count shows her ${SAVE.gold} coins`);
+    await attempt(`${at}: the sound button`, async () => {
+      await touch('#soundBtn');
+      const off = [(await stored()).muted, await cdp.eval("document.querySelector('#soundBtn use').getAttribute('href')")];
+      await touch('#soundBtn');
+      const on = [(await stored()).muted, await cdp.eval("document.querySelector('#soundBtn use').getAttribute('href')")];
+      check(off[0] === true && off[1] === '#i-mute' && on[0] === false && on[1] === '#i-sound', `${at}: the sound button mutes and unmutes, and saves it (${off.join(' ')} then ${on.join(' ')})`);
+    });
+    await attempt(`${at}: Add to Home screen`, async () => {
+      await touch('#pinBtn');
+      check((await cdp.eval('window.__pinCalls')) === 1 && (await cdp.eval("getComputedStyle(document.getElementById('pinHint')).display")) === 'block', `${at}: "Add to Home screen" still asks the launcher and shows its hint`);
+    });
+    await attempt(`${at}: Grown-ups`, async () => {
+      await touch('#parentBtn');
+      const gate = await cdp.eval("document.getElementById('pwGate').classList.contains('on')");
+      const handled = await cdp.eval('window.__back()');
+      check(gate && handled === true && !(await cdp.eval("document.getElementById('pwGate').classList.contains('on')")) && (await mode()) === 'title', `${at}: the Grown-ups button still opens the parent gate, and back closes it`);
+    });
+    await attempt(`${at}: Play`, async () => {
+      await touch('#playBtn');
+      await cdp.waitFor("__dbg.mode === 'levels'", 3000, 'the levels');
+      const world = await cdp.eval("document.getElementById('worldName').textContent");
+      await touch('#levelsHome');
+      check(world === 'World 1' && (await mode()) === 'title', `${at}: the big Play button opens Isabella's levels (${world}), and home comes back`);
+    });
 
-  await cdp.tap('#mazeBtn');
-  await cdp.waitFor("location.pathname.endsWith('/games/maze/index.html') && !!window.__mazeDebug", 8000, 'Coral Maze to load');
-  check((await where()).endsWith('/games/maze/index.html'), 'Coral Maze opens from its button');
-  await sleep(800);
-  console.log('      shot', await cdp.shot(path.join(OUT, 'maze.png')));
-  await cdp.eval('window.__back()');
-  await title();
-  check((await where()).endsWith('/web/index.html'), 'back from Coral Maze returns to the picker');
+    console.log(`\n# ${at}: the "+" screen`);
+    await open(WEB);
+    await attempt(`${at}: "+"`, async () => {
+      await openMore();
+      await checkMore(`${at}`, moreGames.map((g) => g.id));
+      await sleep(400);
+      await shot(`more-${moreGames.length}-${at}`);
+      await touch('#moreBack');
+      check((await mode()) === 'title' && same((await measure()).row.map((b) => b.id), [`${titleGames[0].id}Btn`, 'playBtn', `${titleGames[1].id}Btn`, 'moreBtn']), `${at}: the back button closes the "+" screen: the title is back`);
+      await openMore();
+      const handled = await cdp.eval('window.__back()');
+      const closed = await mode();
+      const again = await cdp.eval('window.__back()');
+      check(handled === true && closed === 'title' && again === false, `${at}: Android's back (window.__back) closes the "+" screen and says so; on the title it is not handled (${handled}, ${closed}, ${again})`);
+    });
 
-  await cdp.tap('#wordsBtn');
-  await cdp.waitFor("location.pathname.endsWith('/games/words/index.html') && !!window.__wordsDebug", 8000, 'Sea Words to load');
-  check((await where()).endsWith('/games/words/index.html'), 'Sea Words opens from its button');
-  await sleep(800);
-  console.log('      shot', await cdp.shot(path.join(OUT, 'words.png')));
-  await cdp.eval('window.__back()');
-  await title();
-  check((await where()).endsWith('/web/index.html'), 'back from Sea Words returns to the picker');
+    console.log(`\n# ${at}: every game opens and comes back`);
+    for (const [i, g] of GAMES.entries()) await playAndReturn(at, WEB, g, { viaMore: i >= 2, wiped: i === 0 || i === 2 });
 
-  await cdp.tap('#playBtn');
-  await cdp.waitFor("__dbg.mode === 'levels'", 5000, 'Isabella levels');
-  check(true, 'the middle button still opens Isabella\'s levels');
+    console.log(`\n# ${at}: the two recipes in hub.js, carried out on a copy`);
+    await attempt(`${at}: move a line`, async () => {
+      // "To change which games are on the title: move lines." The last line goes to the top.
+      const moved = variant('moved', { 'hub.js': (s) => { const l = s.match(LINE); return s.replace(l[l.length - 1], '').replace(l[0], l[l.length - 1] + l[0]); } });
+      const order = [GAMES[GAMES.length - 1], ...GAMES.slice(0, -1)];
+      await open(moved);
+      check(same(await cdp.eval('IsabellaHub.GAMES.map((g) => g.id)'), order.map((g) => g.id)), `${at}: moved ${order[0].label}'s line to the top of the list (${order.map((g) => g.id).join(', ')})`);
+      await checkTitle(`${at} line moved`, order.slice(0, 2));
+      await playAndReturn(`${at} line moved`, moved, order[0]);
+      await openMore();
+      await checkMore(`${at} line moved`, order.slice(2).map((g) => g.id));
+    });
+    await attempt(`${at}: add a game`, async () => {
+      // "To add a game: put its <symbol> in index.html; add one line." Then five more, to make eight behind "+".
+      const one = variant('added', { 'index.html': withSymbol, 'hub.js': (s) => { const l = s.match(LINE); return s.replace(l[l.length - 1], l[l.length - 1] + dummyLine(1)); } });
+      const dummy = { id: 'dummy1', page: 'games/pop/index.html', label: 'Dummy 1' };
+      await open(one);
+      await checkTitle(`${at} one game added`, titleGames);
+      await openMore();
+      await checkMore(`${at} one game added`, [...moreGames.map((g) => g.id), 'dummy1']);
+      await touch('#moreBack');
+      await playAndReturn(`${at} one game added`, one, dummy, { viaMore: true });
 
-  check(errors.length === 0, `no JavaScript exceptions on any page${errors.length ? ': ' + errors.join(' | ') : ''}`);
+      const six = variant('six', { 'index.html': withSymbol, 'hub.js': (s) => { const l = s.match(LINE); return s.replace(l[l.length - 1], l[l.length - 1] + [1, 2, 3, 4, 5, 6].map(dummyLine).join('')); } });
+      await open(six);
+      await checkTitle(`${at} six dummy games`, titleGames);
+      await openMore();
+      await checkMore(`${at} six dummy games`, [...moreGames.map((g) => g.id), 'dummy1', 'dummy2', 'dummy3', 'dummy4', 'dummy5', 'dummy6']);
+      await sleep(400);
+      await shot(`more-${moreGames.length + 6}-${at}`);
+      await touch('#moreBack');
+      await playAndReturn(`${at} six dummy games`, six, { id: 'dummy6', page: 'games/pop/index.html', label: 'Dummy 6' }, { viaMore: true });
+    });
+
+    console.log(`\n# ${at}: how many games the "+" screen holds`);
+    await attempt(`${at}: capacity`, async () => {
+      await open(WEB);
+      await openMore();
+      // Dummies in the page only: n games behind "+", measured for real each time.
+      const withN = async (n) => {
+        await cdp.eval(`(() => { const H = IsabellaHub; H.GAMES.length = Math.min(H.GAMES.length, H.ON_TITLE);
+          for (let i = 0; i < ${n}; i++) H.GAMES.push({ id: 'd' + i, page: 'games/pop/index.html', symbol: 'i-star', label: 'Dummy ' + i });
+          H.build(); return 1; })()`);
+        return measure();
+      };
+      const bad = [], shapes = [];
+      for (let n = 1; n <= 18; n++) {
+        const m = await withN(n), p = moreProblems(m);
+        if (m.grid.length !== n) p.push(`${m.grid.length} buttons drawn`);
+        if (p.length) bad.push(`${n}: ${p.join('; ')}`);
+        shapes.push(`${n}: ${shape(m)}`);
+        if (n === 6) { await sleep(300); await shot(`more-6-${at}`); }
+      }
+      check(!bad.length, `${at}: the "+" screen holds every count from 1 to 18, each button at least 19vh, a tidy grid clear of the back button${bad.length ? `\n      ${bad.join('\n      ')}` : ''}`);
+      console.log(`      ${shapes.join(' | ')}`);
+      const over = moreProblems(await withN(40));
+      check(over.length > 0, `${at}: anchor: 40 games do not fit, and the same check says so (${over.join('; ')})`);
+      await withN(0);
+      const m = await measure();
+      check(m.mode === 'more' && m.grid.length === 0 && (await cdp.eval("document.getElementById('moreBtn').hidden")) === true, `${at}: with only two games in the list there is no "+"`);
+    });
+
+    console.log(`\n# ${at}: hold the "Isabella the Mermaid" title for 4 seconds (${w === 915 ? 'store' : 'family'} flavor)`);
+    await attempt(`${at}: the logo hold`, async () => {
+      await open(WEB, { family: w !== 915 });
+      await touch('#logo', 1500);
+      const short = (await stored()).unlocked;
+      await touch('#logo', 4400);
+      const long = (await stored()).unlocked;
+      await touch('#playBtn');
+      await cdp.waitFor("__dbg.mode === 'levels'", 3000, 'the levels');
+      const world = await cdp.eval("document.getElementById('worldName').textContent");
+      check(short === 1 && long === 20 && world === 'World 2', `${at}: 1.5 s does nothing (level ${short}); 4 s opens all 20 levels (${long}) and Play goes to ${world}`);
+    });
+  }
+
+  // ---- other shapes of screen: layout only ----
+  // At 4:3 "Add to Home screen" is left out: there its pill and the logo's box have always met by
+  // 0.3vh (the same before the "+" button existed), and 4:3 is not a phone.
+  for (const [w, h, pin] of [[1335, 600, true], [1024, 768, false]]) {
+    const at = `${w}x${h}`;
+    console.log(`\n# ${at}: layout`);
+    await viewport(w, h);
+    await attempt(`${at}: layout`, async () => {
+      await open(WEB, { pin });
+      await checkTitle(`${at} store${pin ? ' + Add to Home' : ''}`, titleGames, { pin });
+      await shot(`title-store${pin ? '-pin' : ''}-${at}`);
+      await openMore();
+      await checkMore(at, moreGames.map((g) => g.id));
+      await cdp.eval("(() => { const H = IsabellaHub; for (let i = 0; i < 6; i++) H.GAMES.push({ id: 'd' + i, page: 'games/pop/index.html', symbol: 'i-star', label: 'Dummy ' + i }); H.build(); return 1; })()");
+      await checkMore(`${at} six dummy games`, [...moreGames.map((g) => g.id), 'd0', 'd1', 'd2', 'd3', 'd4', 'd5']);
+      await sleep(300);
+      await shot(`more-${moreGames.length + 6}-${at}`);
+    });
+  }
+
+  check(errors.length === 0, `no JavaScript exceptions on any page${errors.length ? `: ${errors.join(' | ')}` : ''}`);
   console.log(`\n${pass}/${pass + fail} checks passed`);
   await cdp.close();
   process.exit(fail ? 1 : 0);

@@ -1,7 +1,7 @@
 /* Isabella the Mermaid — screens, input, saving, and the main loop. */
 (function () {
   'use strict';
-  const C = IsabellaCore, R = IsabellaRender, A = IsabellaAudio;
+  const C = IsabellaCore, R = IsabellaRender, A = IsabellaAudio, H = IsabellaHub;
   const $ = (id) => document.getElementById(id);
   const NLEV = C.LEVELS.length;
   // Store flavor: World 2 waits for a grown-up's unlock (paywall.js). Family flavor: P is null and
@@ -30,7 +30,7 @@
   const persist = () => store.set('isabella.save', JSON.stringify(save));
 
   // ---- state ----
-  let mode = 'title';       // title | levels | intro | play | paused | results
+  let mode = 'title';       // title | more | levels | intro | play | paused | results
   let game = null, target = null, pointerId = null, touchedThisLevel = false;
   let clock = 0, last = 0, introTimer = 0, menuTheme = 1, lockedShakeT = 0;
 
@@ -40,7 +40,7 @@
   A.setMuted(!!save.muted);
 
   function show(id) {
-    for (const s of ['title', 'levels', 'intro', 'pause', 'results']) $(s).classList.toggle('on', s === id);
+    for (const s of ['title', 'more', 'levels', 'intro', 'pause', 'results']) $(s).classList.toggle('on', s === id);
     $('pauseBtn').classList.toggle('on', id === null && mode === 'play');
   }
   function setSoundIcon() { $('soundBtn').querySelector('use').setAttribute('href', save.muted ? '#i-mute' : '#i-sound'); }
@@ -61,6 +61,8 @@
     refreshPinButton();
     A.startMusic('title');
   }
+  // The "+" on the title: the games that don't fit beside the Play button (hub.js has the list).
+  function goMore() { mode = 'more'; show('more'); H.layout(); }
   function starSvg(on, size) {
     return `<svg viewBox="0 0 24 24" style="${size ? `width:${size};height:${size}` : ''}"><use href="#i-star" fill="${on ? '#ffd23f' : 'rgba(255,255,255,0.45)'}" stroke="${on ? '#c77700' : 'rgba(0,40,80,0.35)'}" stroke-width="1.5"/></svg>`;
   }
@@ -161,11 +163,17 @@
   // ---- buttons ----
   const tap = (id, fn) => $(id).addEventListener('click', () => { A.init(); A.click(); fn(); });
   tap('playBtn', () => { save.played = true; persist(); goLevels(); });
-  // The two small games are their own pages; their home buttons come back here.
-  tap('popBtn', () => { persist(); location.href = 'games/pop/index.html'; });
-  tap('matchBtn', () => { persist(); location.href = 'games/match/index.html'; });
-  tap('mazeBtn', () => { persist(); location.href = 'games/maze/index.html'; });
-  tap('wordsBtn', () => { persist(); location.href = 'games/words/index.html'; });
+  // The other games are their own pages; their home buttons come back here. hub.js lists them and
+  // draws their buttons, two on the title and the rest on the "+" screen.
+  for (const id of ['games', 'moreGrid']) {
+    $(id).addEventListener('click', (e) => {
+      const g = H.gameOf(e.target);
+      if (!g) return;
+      A.init(); A.click(); persist(); location.href = g.page;
+    });
+  }
+  tap('moreBtn', goMore);
+  tap('moreBack', goTitle);
   tap('soundBtn', () => { save.muted = !save.muted; A.setMuted(save.muted); persist(); setSoundIcon(); });
   tap('levelsHome', goTitle);
   let hintT = null;
@@ -200,7 +208,7 @@
     if (mode === 'play') { pauseGame(); return true; }
     if (mode === 'paused') { resumeGame(); return true; }
     if (mode === 'intro' || mode === 'results') { goLevels(); return true; }
-    if (mode === 'levels') { goTitle(); return true; }
+    if (mode === 'levels' || mode === 'more') { goTitle(); return true; }
     return false;
   };
   window.__pause = function () { pauseGame(); A.suspend(); };
@@ -233,8 +241,8 @@
   function frame(nowMs) {
     const dt = Math.min(0.05, last ? (nowMs - last) / 1000 : 0);
     last = nowMs; clock += dt;
-    if (mode === 'title' || mode === 'levels') {
-      R.drawAttract(clock, dt, mode === 'title' ? 1 : menuTheme);
+    if (mode === 'title' || mode === 'more' || mode === 'levels') {
+      R.drawAttract(clock, dt, mode === 'levels' ? menuTheme : 1);
     } else if (game) {
       if (mode === 'play') {
         let rem = dt;

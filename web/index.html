@@ -24,13 +24,17 @@
   .btn.blue { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); box-shadow:0 1.3vh 0 #145f8a, 0 2.5vh 4vh rgba(0,0,0,0.3); }
   .btn.teal { background:radial-gradient(circle at 35% 28%, #c6fff0, #2ec4a6 55%, #138a74); box-shadow:0 1.3vh 0 #0d6656, 0 2.5vh 4vh rgba(0,0,0,0.3); }
   .btn.purple { background:radial-gradient(circle at 35% 28%, #f1dcff, #b46cf0 55%, #7a2fc0); box-shadow:0 1.3vh 0 #5a1f94, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.green { background:radial-gradient(circle at 35% 28%, #e2ffc4, #7ed957 55%, #3f9a2c); box-shadow:0 1.3vh 0 #2c701f, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.coral { background:radial-gradient(circle at 35% 28%, #ffe0cf, #ff8a5c 55%, #e0532a); box-shadow:0 1.3vh 0 #a63a1a, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.indigo { background:radial-gradient(circle at 35% 28%, #dfe4ff, #6f7cf2 55%, #3a43b8); box-shadow:0 1.3vh 0 #282f85, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.pearl { background:radial-gradient(circle at 35% 28%, #ffffff, #eaf6ff 55%, #a8cfe9); box-shadow:0 1.3vh 0 #6c9bbd, 0 2.5vh 4vh rgba(0,0,0,0.3); }
   .btn.pink svg, .btn.blue svg, .btn.teal svg, .btn.purple svg { filter:drop-shadow(0 .4vh 0 rgba(0,0,0,0.25)); }
   .corner { position:fixed; top:4vh; right:5vw; }
   .corner-l { position:fixed; top:4vh; left:5vw; }
   .row { display:flex; gap:5vh; align-items:center; justify-content:center; }
 
   /* title */
-  #title .box { position:fixed; right:6vw; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:center; gap:4vh; }
+  #title .box { position:fixed; right:calc(6vw + 24vh); top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:center; gap:4vh; }
   .logo { text-align:center; line-height:0.9; }
   /* Outlines are stacked drop-shadows: -webkit-text-stroke traces every glyph contour and
      left stray lines inside the letters on the Seeker. */
@@ -42,10 +46,18 @@
     background:linear-gradient(180deg,#fff7b0,#ffd23f 45%,#ff9f1c); -webkit-background-clip:text; background-clip:text; color:transparent; }
   .logo .l2 { font-size:9vh; font-weight:900; color:#fff; margin-top:1vh; }
   .gold { display:flex; align-items:center; gap:1.5vh; font-size:6vh; font-weight:900; color:#fff; }
-  /* the game picker: Bubble Party, Isabella, Shell Match, Coral Maze, Sea Words (picture-only for kids) */
-  .games { display:flex; align-items:center; gap:4vh; }
+  /* The game picker, picture-only for kids. hub.js draws the game buttons from its list: one game,
+     Isabella's big Play button, one game, centred under the logo; "+" sits beside them, in the
+     24vh the box leaves on its right, and opens the rest (#more). */
+  .games { position:relative; display:flex; align-items:center; gap:4vh; }
   .btn.game { width:20vh; height:20vh; }
   .btn.game svg { width:68%; height:68%; filter:none; }
+  #moreBtn { position:absolute; left:calc(100% + 4vh); top:calc(50% - 10vh); }
+  #moreBtn svg { color:#ff4d8d; }
+  /* more games: the back button in the corner, the buttons in rows (hub.js sets --size and the width) */
+  #more { background:rgba(0,30,60,0.3); }
+  #moreGrid { --size:24vh; display:flex; flex-wrap:wrap; justify-content:center; gap:5vh; }
+  #moreGrid .btn.game { width:var(--size); height:var(--size); }
   .coin { width:6vh; height:6vh; border-radius:50%; background:radial-gradient(circle at 35% 30%, #fff6b0, #ffd633 45%, #e8a200); box-shadow:inset 0 0 0 .5vh rgba(180,110,0,0.5); }
 
   /* level map */
@@ -263,6 +275,8 @@
     <symbol id="i-bubble" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="rgba(255,255,255,0.28)" stroke="#fff" stroke-width="1.4"/><path d="M7 12.6c1.8-2.6 5.4-3.2 8-1l2.6-2v6.2l-2.6-2c-2.6 2.2-6.2 1.6-8-1.2z" fill="#ff9f43"/><circle cx="9.3" cy="11.9" r=".9" fill="#1d3557"/><path d="M8.2 7.2a5.6 5.6 0 0 1 3.4-1.6" stroke="#fff" stroke-width="1.3" fill="none" stroke-linecap="round"/></symbol>
     <symbol id="i-maze" viewBox="0 0 24 24"><path d="M19.5 9.5V4.5H4.5v15h15v-5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 4.5v6M8.5 14.5h7M12.5 8.5h3.5v6M12.5 14.5v5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="17" r="1.7" fill="#ff6fb0"/><path d="M20.4 8.9l.95 2.15 2.15.95-2.15.95-.95 2.15-.95-2.15-2.15-.95 2.15-.95z" fill="#ffd23f"/></symbol>
     <symbol id="i-words" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4.5" fill="#fff"/><rect x="3.1" y="8.9" width="17.8" height="6.2" rx="3.1" fill="#ff6fb0"/><g font-family="system-ui,Roboto,sans-serif" font-weight="900" font-size="5.4" text-anchor="middle"><g fill="#5b3a9e"><text x="7" y="7.95">B</text><text x="12" y="7.95">L</text><text x="17" y="7.95">D</text><text x="7" y="19.95">P</text><text x="12" y="19.95">M</text><text x="17" y="19.95">T</text></g><g fill="#fff"><text x="7" y="13.95">S</text><text x="12" y="13.95">E</text><text x="17" y="13.95">A</text></g></g><path d="M21 .4l.8 1.8 1.8.8-1.8.8-.8 1.8-.8-1.8-1.8-.8 1.8-.8z" fill="#ffd23f"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4.5v15M4.5 12h15" fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M11 4.6 3.6 12l7.4 7.4v-4.6h9.2V9.2H11z" fill="#fff" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></symbol>
     <symbol id="i-shell" viewBox="0 0 24 24"><path d="M12 3.2c5.6 0 9.6 4.4 9.6 9.4 0 1.6-.8 2.6-2.2 2.6H4.6c-1.4 0-2.2-1-2.2-2.6 0-5 4-9.4 9.6-9.4z" fill="#fff"/><path d="M12 15.2V4.4M12 15.2 7.4 5.4M12 15.2 3.8 8.6M12 15.2l4.6-9.8M12 15.2l8.2-6.6" stroke="#ff6fb0" stroke-width="1.1" stroke-linecap="round"/><rect x="8.4" y="15.4" width="7.2" height="3.4" rx="1.4" fill="#fff"/><circle cx="12" cy="19.6" r="1.6" fill="#fff6b0" stroke="#ffd23f" stroke-width=".6"/></symbol>
   </defs>
 </svg>
@@ -270,12 +284,10 @@
 <div id="title" class="screen on">
   <div class="box">
     <div class="logo" id="logo"><div class="ol-brown"><div class="l1">Isabella</div></div><div class="l2 ol-pink">the Mermaid</div></div>
-    <div class="games">
-      <button id="popBtn" class="btn game blue" aria-label="Bubble Party"><svg viewBox="0 0 24 24"><use href="#i-bubble"/></svg></button>
+    <!-- hub.js adds a game button each side of Play, from its list; the rest of the list is behind "+" -->
+    <div class="games" id="games">
       <button id="playBtn" class="btn" aria-label="Isabella"><svg><use href="#i-play"/></svg></button>
-      <button id="matchBtn" class="btn game pink" aria-label="Shell Match"><svg viewBox="0 0 24 24"><use href="#i-shell"/></svg></button>
-      <button id="mazeBtn" class="btn game teal" aria-label="Coral Maze"><svg viewBox="0 0 24 24"><use href="#i-maze"/></svg></button>
-      <button id="wordsBtn" class="btn game purple" aria-label="Sea Words"><svg viewBox="0 0 24 24"><use href="#i-words"/></svg></button>
+      <button id="moreBtn" class="btn game pearl" aria-label="More games"><svg viewBox="0 0 24 24"><use href="#i-plus"/></svg></button>
     </div>
     <div class="gold"><span class="coin"></span><span id="goldTotal" class="ol-navy">0</span></div>
   </div>
@@ -283,6 +295,12 @@
   <button id="pinBtn" class="pill" style="display:none"><svg viewBox="0 0 24 24"><use href="#i-addhome"/></svg><span>Add to Home screen</span></button>
   <div id="pinHint" class="hint">Tap <b>Add to home screen</b> on the next screen.</div>
   <button id="parentBtn" class="pw-parent" aria-label="Grown-ups" hidden><span><svg><use href="#i-grownup"/></svg></span></button>
+</div>
+
+<!-- More games (the "+" on the title): hub.js fills the grid. Pictures only. -->
+<div id="more" class="screen" role="region" aria-label="More games">
+  <button id="moreBack" class="btn game blue corner-l" aria-label="Back"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+  <div id="moreGrid"></div>
 </div>
 
 <div id="levels" class="screen">
@@ -397,6 +415,7 @@
 <script src="render.js"></script>
 <script src="audio.js"></script>
 <script src="paywall.js"></script>
+<script src="hub.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
