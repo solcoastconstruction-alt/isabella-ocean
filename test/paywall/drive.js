@@ -478,8 +478,8 @@ async function family() {
   check(before.title === 'playBtn,soundBtn' && before.levels2.startsWith('World 2|') && before.levels2.includes('lvl locked') && before.next === 'intro 11',
     `anchor: the baseline snapshot is real (title ${before.title}; ${before.levels2.length} chars of World 2 grid; next -> ${before.next})`);
   // Since the baseline, her build gained exactly one thing on the title: the game picker around Play
-  // (Bubble Party, Shell Match, Coral Maze). Everything else must still match the baseline exactly.
-  const expect = { ...before, title: before.title.replace('playBtn', 'popBtn,playBtn,matchBtn,mazeBtn') };
+  // (Bubble Party, Shell Match, Coral Maze, Sea Words). Everything else must still match the baseline exactly.
+  const expect = { ...before, title: before.title.replace('playBtn', 'popBtn,playBtn,matchBtn,mazeBtn,wordsBtn') };
   for (const k of Object.keys(before)) {
     check(now[k] === expect[k], `family = before (${BASELINE})${k === 'title' ? ' + game picker' : ''}: ${k}${now[k] === expect[k] ? '' : `\n      now:    ${String(now[k]).slice(0, 200)}\n      expect: ${String(expect[k]).slice(0, 200)}`}`);
   }

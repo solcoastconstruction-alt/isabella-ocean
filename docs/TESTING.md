@@ -6,7 +6,7 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | Command | Checks | Last result | Port |
 |---|---|---|---|
 | `node test/verify.js` | Isabella: all 20 levels finishable; levels 1–10 byte-identical (frozen) | 20/20 | – |
-| `node test/hub/hub.test.js` | Title screen: 4 game buttons ≥19vh, fit at 800×360, each opens and comes back | 14/14 | 9454 |
+| `node test/hub/hub.test.js` | Title screen: 5 game buttons ≥19vh, fit at 800×360, each opens and comes back | 16/16 | 9454 |
 | `node test/paywall/drive.js` | Paywall, parent gate, grown-ups screen; family baseline unchanged | 96/96 | 9450 |
 | `cd tools && npm test` | Payments: unit tests, devnet simulation, Jupiter read-only | 39 pass, 9 skipped | – |
 | `node --test test/games/match/logic.test.js` | Shell Match rules | 10/10 | – |
@@ -16,6 +16,9 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | `node test/games/maze/verify.js` | Coral Maze: every level solvable, fair, frozen, rising | 20/20 | – |
 | `node test/games/maze/browser.js` | Coral Maze with real touch | 59/59 | 9454 |
 | `node test/games/maze/soak.js` | ~3 minutes of random play | pass | 9454 |
+| `node test/games/words/verify.js` | Sea Words: 13,000 puzzles; placement, modes, no rude words, fresh vs seeded | 69/69 | – |
+| `node test/games/words/browser.js` | Sea Words with real touch drags in all modes | 86/86 | 9457 |
+| `node test/games/words/soak.js` | ~3 minutes of random play | pass | 9457 |
 | `node test/e2e/emulator-flow.js` | The full parent flow on the emulator with real devnet transactions | 9/9 | 9460 |
 
 ## End to end on the emulator

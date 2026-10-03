@@ -26,11 +26,11 @@ const check = (ok, what) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`); o
     await cdp.viewport(w, h);
     await cdp.navigate(PAGE);
     await title();
-    const sizes = await cdp.eval(`['popBtn','playBtn','matchBtn','mazeBtn'].map((id) => { const b = document.getElementById(id).getBoundingClientRect(); return Math.round(Math.min(b.width, b.height) / innerHeight * 1000) / 10; })`);
-    check(sizes.every((s) => s >= 19), `${w}x${h}: four game buttons, each at least 19vh (${sizes.join(' / ')} vh)`);
-    const fit = await cdp.eval(`(() => { const ids = ['popBtn','playBtn','matchBtn','mazeBtn'], r = ids.map((id) => document.getElementById(id).getBoundingClientRect());
+    const sizes = await cdp.eval(`['popBtn','playBtn','matchBtn','mazeBtn','wordsBtn'].map((id) => { const b = document.getElementById(id).getBoundingClientRect(); return Math.round(Math.min(b.width, b.height) / innerHeight * 1000) / 10; })`);
+    check(sizes.every((s) => s >= 19), `${w}x${h}: five game buttons, each at least 19vh (${sizes.join(' / ')} vh)`);
+    const fit = await cdp.eval(`(() => { const ids = ['popBtn','playBtn','matchBtn','mazeBtn','wordsBtn'], r = ids.map((id) => document.getElementById(id).getBoundingClientRect());
       return { inside: r.every((b) => b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight), apart: r.every((b, i) => i === 0 || b.left >= r[i - 1].right), scroll: document.body.scrollWidth <= innerWidth }; })()`);
-    check(fit.inside && fit.apart && fit.scroll, `${w}x${h}: the four buttons sit on screen, side by side, with no sideways scroll`);
+    check(fit.inside && fit.apart && fit.scroll, `${w}x${h}: the five buttons sit on screen, side by side, with no sideways scroll`);
     console.log('      shot', await cdp.shot(path.join(OUT, `title-${w}x${h}.png`)));
   }
   await cdp.viewport(1335, 600);
@@ -63,6 +63,15 @@ const check = (ok, what) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`); o
   await cdp.eval('window.__back()');
   await title();
   check((await where()).endsWith('/web/index.html'), 'back from Coral Maze returns to the picker');
+
+  await cdp.tap('#wordsBtn');
+  await cdp.waitFor("location.pathname.endsWith('/games/words/index.html') && !!window.__wordsDebug", 8000, 'Sea Words to load');
+  check((await where()).endsWith('/games/words/index.html'), 'Sea Words opens from its button');
+  await sleep(800);
+  console.log('      shot', await cdp.shot(path.join(OUT, 'words.png')));
+  await cdp.eval('window.__back()');
+  await title();
+  check((await where()).endsWith('/web/index.html'), 'back from Sea Words returns to the picker');
 
   await cdp.tap('#playBtn');
   await cdp.waitFor("__dbg.mode === 'levels'", 5000, 'Isabella levels');

@@ -4,7 +4,7 @@
 | Video | Where | Status |
 |---|---|---|
 | Emulator backup (3:46, 2400×1080) | `.local/demo/isabella-ocean-demo.mp4` (a 720p copy is `isabella-ocean-demo-720p.mp4`) | Done 2 Oct |
-| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | `.local/demo/isabella-ocean-seeker-demo.mp4` (preview: `…-preview.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit. |
+| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | **https://youtu.be/__YTxNECcDc** (file: `.local/demo/isabella-ocean-seeker-demo.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit. |
 
 **What the emulator backup shows:**
 1. title card → the three free games;

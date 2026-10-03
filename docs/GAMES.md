@@ -1,7 +1,7 @@
 # The games
 
-Four ocean games share one app. Each is plain HTML5 canvas with no libraries; all the art and sound
-are made in code. The title screen ("hub", `web/index.html`) shows them as four picture buttons.
+Five ocean games share one app. Each is plain HTML5 canvas with no libraries; all the art and sound
+are made in code. The title screen ("hub", `web/index.html`) shows them as five picture buttons.
 
 | Game | Folder | Ages | Levels | In the store app (Isabella Ocean) | Save key | Tests |
 |---|---|---|---|---|---|---|
@@ -9,6 +9,7 @@ are made in code. The title screen ("hub", `web/index.html`) shows them as four 
 | Isabella the Mermaid | `web/` (`core.js`, `render.js`, `audio.js`, `app.js`) | 5–8 | 20 | levels 1–10 free; 11–20 unlock (see PAYMENTS.md) | `isabella.save` | `test/verify.js` |
 | Shell Match | `web/games/match/` | 5–8 | 6 | all free | `game.match.save` | `test/games/match/` |
 | Coral Maze | `web/games/maze/` | 5–8 | 20 | all free | `isabella.maze` | `test/games/maze/` |
+| Sea Words | `web/games/words/` | 5–8 | endless (easy, medium, hard) | all free | `game.words.save` | `test/games/words/` |
 
 In the family app everything is unlocked. Saves go through `window.IsabellaStore`, which is Android
 SharedPreferences (file `isabella`), or `localStorage` in a browser. Sound on or off is one shared
@@ -93,8 +94,29 @@ Speed is in world units per second on a 540-tall screen: about 11 s to cross at 
 - **Stars:** awarded for a short route, never for speed. A hint trail appears after 20 s without progress.
 - **Proof:** `test/games/maze/verify.js` searches every state of every level, including keys, gates, the last shell and each patrol's phase. It proves each level escapable and free of dead ends, cross-checks par with a second search, and freezes the levels by fingerprint.
 
+## Sea Words (added 3 Oct 2026)
+- **How it plays:** a word search where every word comes with its picture. The child drags a line from a word's first letter to its last.
+  - The line snaps to 8 directions and tolerates a wobble.
+  - A correct find gets a tick and sparkle; a wrong line fades with no penalty.
+- **Words (14):** SHELL, FISH, CRAB, STAR, TURTLE, WHALE, OCTOPUS, SEAHORSE, DOLPHIN, PEARL, CORAL, CHEST, COIN, KEY.
+  - JELLYFISH and STARFISH are left out, because they contain FISH and STAR.
+- **Modes:**
+
+  | Mode | Words | Grid | Directions | Hint after |
+  |---|---|---|---|---|
+  | Easy | 1 picture and word | 5×5 (6×6 for TURTLE), big letters | across, down | 20 s |
+  | Medium | 3–4 | 8×8 | forward, with diagonals | 40 s |
+  | Hard | all 14 | 12×12 | all 8, including backwards | 40 s |
+
+- **Fresh every time:** every puzzle is newly generated. Easy avoids its last 5 words.
+- **Rewards:** Hard gives stars for finishing without hints, never for speed. Every finish ends with the treasure chest.
+- **Rude-word guard:**
+  - Filler letters are consonants only.
+  - Every line, read both ways in all 8 directions, is checked against a 148-word blocklist (ROT13-encoded in `blocklist.js`). Any hit is re-rolled.
+  - The test checks 13,000 puzzles with a separate scanner.
+
 ## The hub (title screen)
-- **Buttons, left to right:** Bubble Party, Isabella (big Play button), Shell Match, Coral Maze.
+- **Buttons, left to right:** Bubble Party, Isabella (big Play button), Shell Match, Coral Maze, Sea Words. The row fits an 800×360 screen.
 - **Wiring:**
   - each button has one line in `web/app.js`, e.g. `tap('mazeBtn', () => { persist(); location.href = 'games/maze/index.html'; })`;
   - the icons are SVG `<symbol>`s in `web/index.html`.
