@@ -24,7 +24,7 @@ const events = fs.readFileSync(logFile, 'utf8').split('\n')
 if (events.length < 5) throw new Error(`only ${events.length} timed events in ${logFile}; is it a record-demo log?`);
 // Only stretches where the app waits on the network or the wallet: they start at one of these.
 const WAITS_AFTER = [/tapped AUTHORIZE/, /tapped SEND TRANSACTION/, /^tapped Stake/, /^tapped Pay once/, /^picked a token/,
-  /^confirmed: get my SOL back/, /^grown-ups: checking/, /^exit sent/];
+  /^confirmed: get my SOL back/, /^grown-ups: checking/, /^exit sent/, /: back in the app$/];   // the last: a real Seeker, after the owner approved
 const fast = [];
 for (let i = 1; i < events.length; i++) {
   const a = events[i - 1].t + KEEP, b = events[i].t - KEEP;
@@ -36,9 +36,9 @@ for (let i = 1; i < events.length; i++) {
 const PW = Math.round((H * H) / W), PX = Math.round((W - PW) / 2), PH = Math.round(PW * 1.1);
 const zoom = [];
 for (let i = 0; i < events.length; i++) {
-  if (!/ on screen$/.test(events[i].what)) continue;
+  if (!/ on screen($| \()/.test(events[i].what)) continue;   // the test wallet's buttons, or the Seeker's wallet
   let j = i + 1;
-  while (j < events.length && !/: tapped /.test(events[j].what)) j++;
+  while (j < events.length && !/: tapped |: back in the app$/.test(events[j].what)) j++;
   if (j >= events.length) break;
   const a = events[i].t - 0.5, b = events[j].t + 0.8, last = zoom[zoom.length - 1];
   if (last && a - last[1] < 5) last[1] = b; else zoom.push([a, b]);

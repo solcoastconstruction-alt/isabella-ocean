@@ -4,7 +4,7 @@
 | Video | Where | Status |
 |---|---|---|
 | Emulator backup (3:46, 2400×1080) | `.local/demo/isabella-ocean-demo.mp4` (a 720p copy is `isabella-ocean-demo-720p.mp4`) | Done 2 Oct |
-| The owner's Seeker recording | his phone | **Required.** CLOCK IN wants about 3 minutes showing a real device, not only a simulator. The flow worked on 3 Oct; record a clean take (TODO A1). |
+| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | `.local/demo/isabella-ocean-seeker-demo.mp4` (preview: `…-preview.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit. |
 
 **What the emulator backup shows:**
 1. title card → the three free games;
@@ -18,6 +18,18 @@ visible label, and the wallet screens are zoomed so they can be read. **One blem
 wallet's first connect screen reads "Status: Verification failed". That is its 3-second identity
 check timing out on the emulator's slow first connection; the later steps were unaffected. The
 Seeker recording, which uses the real Seed Vault Wallet, has no such issue.
+
+## Recording on a real Seeker
+```bash
+SEEKER_SERIAL=<adb serial> node test/e2e/record-seeker.js <wallet address>
+node test/e2e/edit-seeker.js
+```
+- **What it does:** it taps through Isabella Ocean on the phone over USB and records the screen. The **phone's owner approves every wallet prompt**; the script never touches the wallet.
+- **What it needs:** a wallet account that has never bought World 2 and holds at least 1.15 devnet SOL. Send it SOL with `tools/keys/devbank/send.js`.
+- **Account check:** if a different account connects, it stops rather than record a misleading take. Picking the right account is the wallet's job: switch the wallet's active account first.
+- **The Seed Vault sheets do show in recordings.** They are portrait, so the editor zooms into them.
+- **Blurring other accounts:** the wallet's account picker lists the phone's other wallets. `edit-seeker.js` blurs that card during the picker windows. Re-check the windows, frame by frame, for any new take.
+- **Output:** `.local/demo/isabella-ocean-seeker-raw.mp4` and `seeker.log`, then the edited `isabella-ocean-seeker-demo.mp4` (≤3 min, with captions and the wallet rounds at 2×).
 
 ## Recording a take on the emulator
 ```bash
