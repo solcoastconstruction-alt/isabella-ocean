@@ -1,6 +1,7 @@
-/* Isabella's Bubble Party — sound, synthesised with WebAudio (no audio files).
- * Every pop is a note of the major pentatonic in the current sea's key, and the music is in the
- * same key, so any run of taps (or ten fingers at once) is a little tune that fits.
+/* Bubble Party: sound, synthesised with WebAudio (no audio files).
+ * Every note is from the major pentatonic in the current sea's key, and the music is in the same
+ * key, so any run of saves is a little tune that fits. Nothing is harsh: a grumpy drop gets a comic
+ * grumble and two soft falling notes, never a buzzer.
  * Helpers follow web/audio.js (copied, not shared). */
 (function () {
   'use strict';
@@ -152,6 +153,79 @@
       const t = now();
       tone(note(7, 12), t, 0.2, 'sine', 0.06); tone(note(4, 12), t + 0.12, 0.3, 'sine', 0.05);
     },
+    // a bubble picked up by a finger: a soft rising bloop
+    grab() {
+      if (!live()) return;
+      const t = now();
+      tone(note(2, 0), t, 0.16, 'sine', 0.14, note(7, 0), sfx, 0.1);
+    },
+    // a creature saved at its icon: the pop, then a happy little rising pair
+    save(u) {
+      if (!live()) return;
+      S.pop(u, 'normal');
+      const t = now() + 0.08, i = Math.round(clamp(u, 0, 1) * 6);
+      tone(note(i + 2, 12), t, 0.3, 'triangle', 0.1); tone(note(i + 4, 12), t + 0.09, 0.4, 'triangle', 0.1);
+    },
+    // a friend lands in tray place n: the counting notes climb 1..10 like a xylophone
+    count(n) { S.join(n); },
+    // ten counted: they gather into a gold coin (a sparkly rising run), then it lands in its ring (a bright ching)
+    gather() {
+      if (!live()) return;
+      const t = now();
+      for (let k = 0; k < 6; k++) tone(note(4 + k, 12), t + k * 0.05, 0.3, 'triangle', 0.08);
+    },
+    coin() {
+      if (!live()) return;
+      const t = now();
+      tone(note(9, 12), t, 0.25, 'triangle', 0.16); tone(note(10, 12), t + 0.07, 0.5, 'triangle', 0.14);
+      tone(note(10, 24), t + 0.07, 0.35, 'sine', 0.05);
+      noiseHit(t, 0.04, 6000, 2, 0.06);
+    },
+    // a coin given back: two soft falling notes (gentle, never a buzzer)
+    coinLost() {
+      if (!live()) return;
+      const t = now() + 0.15;
+      tone(note(4, 12), t, 0.3, 'sine', 0.09); tone(note(2, 12), t + 0.18, 0.45, 'sine', 0.08);
+    },
+    // a grumpy creature grumbles: a comic low "hmph-hmph" that wobbles down
+    grumble() {
+      if (!live()) return;
+      const t = now();
+      for (let k = 0; k < 2; k++) {
+        const t0 = t + k * 0.2, f = N(48 + key - k * 2);
+        tone(f * 1.25, t0, 0.17, 'triangle', 0.12, f, sfx, 0.15);
+        tone(f * 2.5, t0, 0.12, 'sine', 0.03, f * 2, sfx, 0.1);
+      }
+    },
+    // a cute creature dropped in the wrong place bounces back up: a friendly boing
+    boing() {
+      if (!live()) return;
+      const t = now();
+      tone(note(0, 0), t, 0.24, 'sine', 0.16, note(5, 0), sfx, 0.12);
+      tone(note(5, 0), t + 0.12, 0.2, 'sine', 0.08, note(3, 0), sfx, 0.1);
+    },
+    // a tap on a cute bubble: it jiggles (it wants to be carried home)
+    boop() {
+      if (!live()) return;
+      const t = now();
+      tone(note(5, 12), t, 0.12, 'sine', 0.08, note(4, 12), sfx, 0.1);
+    },
+    // a grumpy bubble tapped away: a light pop and a "hmph"
+    popAway(u) {
+      if (!live()) return;
+      S.pop(u, 'small');
+      const t = now() + 0.1, f = N(52 + key);
+      tone(f * 1.2, t, 0.16, 'triangle', 0.08, f, sfx, 0.14);
+    },
+    // the treasure chest opens
+    chest() { S.party(); S.coin(); },
+    star(i) {
+      if (!live()) return;
+      const t = now();
+      tone(note(4 + i * 2, 12), t, 0.5, 'triangle', 0.22); tone(note(4 + i * 2, 24), t + 0.05, 0.4, 'sine', 0.08);
+    },
+    click() { if (!live()) return; const t = now(); tone(note(7, 12), t, 0.07, 'sine', 0.16); },
+    locked() { if (!live()) return; const t = now(); tone(note(0, -12), t, 0.15, 'triangle', 0.12); tone(note(0, -12) * 0.94, t + 0.17, 0.22, 'triangle', 0.1); },
   };
 
   // ---- soft looping music: I-vi-IV-V, bass + arpeggio + a sparse pentatonic tune, slower than the main game ----
@@ -179,7 +253,7 @@
     }
   }
   function startMusic(idx, k) {
-    if (song && song.idx === idx && timer) return;
+    if (song && song.idx === idx && song.k === k && timer) return;
     song = makeSong(idx, k);
     if (!ctx) return;
     step = 0; nextT = ctx.currentTime + 0.1;

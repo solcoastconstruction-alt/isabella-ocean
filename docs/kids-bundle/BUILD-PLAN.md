@@ -26,7 +26,7 @@ The coordinator (main chat) owns this file and merges every branch. Each agent w
 4. **Edit only the files you own** (table below). If you need a change elsewhere, describe it in your report; don't make it.
 5. **Do not edit** `web/core.js`, `web/render.js` or `web/audio.js` (the level fingerprints in `test/verify.js` must stay green).
 6. **Headless Chrome:** use your own `--remote-debugging-port` and your own `--user-data-dir` under the scratchpad.
-   - Ports: paywall 9450, game-pop 9451, game-match 9452, payments 9453, bridge (WebView) 9460.
+   - Ports: paywall 9450, game-pop 9455 (was 9451), game-match 9452, payments 9453, maze 9454 (the hub test also uses 9454, so don't run them together), bridge (WebView) 9460.
 7. **Finish:** commit on your worktree branch (message ends with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`). Report the branch, commit hash, what you verified (with evidence), and what is unfinished.
 
 ## Who owns what
