@@ -1,0 +1,5 @@
+# Cloudflare Pages response headers (this file itself is never served).
+# The APK is not in git: scripts/deploy-site.sh adds it to the deploy.
+/isabella-ocean.apk
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="isabella-ocean.apk"

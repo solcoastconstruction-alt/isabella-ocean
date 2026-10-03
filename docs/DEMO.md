@@ -79,4 +79,6 @@ then sends it 1.2 devnet SOL once.
 2. To try an unlock on devnet:
    - put the Seed Vault Wallet on Devnet: Settings → tap the version number 7 times → Developer mode → Devnet;
    - get devnet SOL at faucet.solana.com: about 1.2 SOL covers staking plus a test purchase.
-3. In the app: tap a World 2 level → Grown-ups → the parent gate → Stake 1 SOL, or Pay once.
+3. On a fresh install, World 2's levels also need World 1 finished. To skip that, **hold the "Isabella" logo on the title screen for 4 seconds** (a key sound plays). That opens every level's progress lock; payment is still required.
+4. In the app: tap a World 2 level → Grown-ups → the parent gate (hold, then a multiplication) → Stake 1 SOL, or Pay once.
+5. The full answers for the form, with these instructions, are in `docs/SUBMISSION.md` (private).

@@ -42,8 +42,8 @@ All public addresses are in `pool/devnet.json`; the keys are in gitignored `pool
 - No validator is ever left between its minimum stake and minimum + 1.01 SOL, so a parent's free exit always has stake to come from.
 - A reserve buffer is kept liquid for instant exits (1.05 SOL on devnet).
 - **GitHub Actions** (`.github/workflows/pool-crank.yml`) runs the crank every 6 hours.
-  - No repo secrets are set, so today it runs only the public update.
-  - To stake deposits it needs the `POOL_STAKER_KEYPAIR` secret.
+  - **No repo secrets are set, so today the job does nothing.** It exits with "nothing to run" until a key is set. The app's own transactions still prepend the update, so devnet keeps working.
+  - It needs `POOL_STAKER_KEYPAIR` (or `POOL_CRANK_PAYER_KEYPAIR` for update only) before it does anything.
   - Mainnet also needs `POOL_CLUSTER=mainnet`, `POOL_ALLOW_MAINNET=yes`, a private `POOL_RPC_URL`, and `pool/mainnet.json`.
 
 ## Commands (from `pool/`)

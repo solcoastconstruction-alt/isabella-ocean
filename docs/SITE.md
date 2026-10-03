@@ -1,25 +1,39 @@
 # The website
 
-**https://isabellaocean-app.pages.dev**, the source in `site/`. It does three jobs:
+**https://isabellaocean-app.pages.dev**, the source in `site/`. It does four jobs:
 
 1. **Wallet identity:** `/.well-known/assetlinks.json` tells wallets that the app `app.isabella.mermaid.seeker`, signed with our certificate, really belongs to this site. Wallets then show "Isabella Ocean" as verified.
 2. **Legal pages:** `privacy.html` and `terms.html`. The app links to them from the grown-ups screen.
 3. **A landing page:** `index.html`, with `icon.png` and `img/`.
+4. **The devnet test APK:** `/isabella-ocean.apk`, a direct download for hackathon judges, linked from the landing page's footer.
+   - It is the store-flavor debug build (ANDROID.md), which runs on Solana devnet.
+   - It is **not in git**. The deploy script builds it and adds it.
 
 **Brand rule:** the site and app stand alone as Isabella Ocean. They must not name or link any other
 business of the owner.
 
 ## Deploy (Cloudflare Pages, classic project `isabellaocean-app`)
 ```bash
-npx wrangler pages deploy site --project-name isabellaocean-app --branch main --commit-dirty=true
+scripts/deploy-site.sh              # builds the store debug APK, then deploys site/ plus the APK
+scripts/deploy-site.sh <file.apk>   # deploys that APK instead
 ```
-- **Always pass `--project-name`.** With wrangler 4.146, a `pages` command for a project that doesn't exist yet silently creates a **Worker** instead, on the account's `workers.dev` subdomain. That subdomain names a different brand.
+- **Always deploy through the script.** It deploys a temp copy of `site/` with the APK added. A plain `wrangler pages deploy site` would **remove the APK** from the live site.
+- **What the script does:**
+  - builds the APK (or takes yours) and checks it: every game in `web/games` is packed, it is the store flavor, and its signing certificate is listed in `assetlinks.json`;
+  - refuses if another brand's name or a private detail appears in the pages or inside the APK;
+  - checks that the Pages project exists, then runs `npx wrangler pages deploy <tempdir> --project-name isabellaocean-app --branch main --commit-dirty=true`;
+  - checks the result: wrangler must report a `*.isabellaocean-app.pages.dev` deployment and no Worker, and the live APK, `/`, `/privacy`, `/terms` and `assetlinks.json` must match what it staged, byte for byte.
+- **`site/_headers`** serves the APK as `application/vnd.android.package-archive` with `Content-Disposition: attachment`. Pages reads this file when you deploy and never serves it.
+- **Always pass `--project-name`.** The script refuses to run without it.
+  - Since wrangler 4.146, when wrangler detects an AI agent, a `pages` command for a project that doesn't exist yet silently creates a **Worker** instead, on the account's `workers.dev` subdomain. That subdomain names a different brand.
+  - The wrangler source also skips that hand-over when `--branch` or `--commit-dirty` is passed, or when the project exists.
 - The classic project was created once with `wrangler pages project create isabellaocean-app --production-branch main --force`.
-- **After deploying, check the result:**
+- **A 200 proves nothing on its own.** For a missing file, Pages answers 200 with `index.html`. To check by hand, look at the content:
   ```bash
+  curl -sI https://isabellaocean-app.pages.dev/isabella-ocean.apk   # content-type: application/vnd.android.package-archive
   curl -s https://isabellaocean-app.pages.dev/.well-known/assetlinks.json
   ```
-  This should return the JSON with our package and certificate.
+  The second one should return the JSON with our package and certificate.
 
 ## `assetlinks.json`
 ```json
@@ -28,7 +42,8 @@ npx wrangler pages deploy site --project-name isabellaocean-app --branch main --
   "sha256_cert_fingerprints":["BE:22:1E:89:34:43:DA:8A:BB:06:15:B3:CE:43:FB:58:99:51:C7:CD:B5:E5:39:37:E5:C9:CF:DC:12:FF:42:23"]}}]
 ```
 That fingerprint is today's **debug** certificate. When the release keystore exists, **add** its
-SHA-256 to the list (keep the debug one for test builds) and redeploy (TODO.md).
+SHA-256 to the list (keep the debug one for test builds) and redeploy with `scripts/deploy-site.sh`
+(TODO.md). The script refuses an APK whose certificate isn't listed.
 
 ## The legal pages
 - **Privacy:** the games collect nothing. No accounts, sign-in, ads, analytics or tracking. The only network traffic is to Solana and Jupiter, for an unlock the parent starts.
