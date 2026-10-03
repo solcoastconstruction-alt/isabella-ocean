@@ -4,7 +4,7 @@
 | Video | Where | Status |
 |---|---|---|
 | Emulator backup (3:46, 2400×1080) | `.local/demo/isabella-ocean-demo.mp4` (a 720p copy is `isabella-ocean-demo-720p.mp4`) | Done 2 Oct |
-| The owner's Seeker recording | his phone | The flow worked on 3 Oct; confirm a clean recording exists |
+| The owner's Seeker recording | his phone | **Required.** CLOCK IN wants about 3 minutes showing a real device, not only a simulator. The flow worked on 3 Oct; record a clean take (TODO A1). |
 
 **What the emulator backup shows:**
 1. title card → the three free games;
