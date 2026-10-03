@@ -64,21 +64,20 @@ then sends it 1.2 devnet SOL once.
 
 ## The deck
 **https://claude.ai/artifact/RTPTuoaeKEf4GBhPQufksg** (a private Slides artifact; share it from its Share menu).
-- **12 slides:** cover → the problem → three games → what's free → two ways to unlock → how staking works → parents in control → pay once → the economics → tech → the demo → what's next.
+- **12 slides:** cover → the problem → five games → what's free → two ways to unlock → how staking works → parents in control → pay once → the economics → tech → the demo → what's next.
 - **Facts:** every number comes from the research brief (`docs/kids-bundle/README.md` and the appendices):
   - 121,069 activated Seekers (2 Oct);
   - no kids titles on the dApp Store;
   - US$35–90 a year for kids' subscriptions elsewhere;
   - staking yield of 4.8–5.5%, about 0.05 SOL a year per family;
   - 0% store commission.
-- **Placeholders to fill:** [Demo video link], [Seeker recording link], [Source repo link], [Contact].
-- **Out of date** since 3 Oct: it shows three games and the old Bubble Party. Add Coral Maze and the new Bubble Party (TODO.md).
+- **Version 6 (3 Oct):** five games, the Seeker proof image and the demo video link. The last slide gives the site, the code, the demo and a contact.
 
 ## For judges trying the APK on a Seeker (draft)
 1. Install the APK. The free games and Isabella's World 1 work offline.
 2. To try an unlock on devnet:
    - put the Seed Vault Wallet on Devnet: Settings → tap the version number 7 times → Developer mode → Devnet;
    - get devnet SOL at faucet.solana.com: about 1.2 SOL covers staking plus a test purchase.
-3. On a fresh install, World 2's levels also need World 1 finished. To skip that, **hold the "Isabella" logo on the title screen for 4 seconds** (a key sound plays). That opens every level's progress lock; payment is still required.
+3. On a fresh install, World 2's levels also need World 1 finished. To skip that, **hold the "Isabella" logo on the title screen for 4 seconds**. Nothing changes on the title screen, but Play then opens on World 2. That opens every level's progress lock; payment is still required.
 4. In the app: tap a World 2 level → Grown-ups → the parent gate (hold, then a multiplication) → Stake 1 SOL, or Pay once.
-5. The full answers for the form, with these instructions, are in `docs/SUBMISSION.md` (private).
+5. To try both ways, stake first: a purchase is permanent. The README's "Try it on a Seeker" has the same steps.

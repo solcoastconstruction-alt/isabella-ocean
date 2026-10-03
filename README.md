@@ -102,9 +102,15 @@ gate.
    Developer mode → Devnet.
 3. **Get devnet SOL** for your wallet at [faucet.solana.com](https://faucet.solana.com) (it may ask
    you to sign in with GitHub). About 1.2 SOL covers staking plus a purchase.
-4. **Unlock World 2:** tap Play, page across to World 2 and tap a level with a gold padlock →
-   Grown-ups → hold for 3 seconds, then answer a multiplication → **Stake 1 SOL** or **Pay US$15
-   once** → approve in the wallet.
+4. **Skip World 1:** on the title screen, press and hold the "Isabella the Mermaid" title for 4
+   seconds. Each level opens only when the one before it is finished, so on a fresh install World
+   2's levels would stay closed after the unlock until World 1 is beaten. Nothing changes on the
+   title screen, but Play now opens on World 2. This lifts only the progress lock: the levels keep
+   their gold padlocks until a grown-up unlocks them.
+5. **Unlock World 2:** tap Play (if it still opens on World 1, repeat step 4) and tap a level with
+   a gold padlock → Grown-ups → hold for 3 seconds, then answer a multiplication → **Stake 1 SOL**
+   or **Pay US$15 once** → approve in the wallet. To try both ways, stake first: a purchase is
+   permanent.
 
 What happens next:
 
