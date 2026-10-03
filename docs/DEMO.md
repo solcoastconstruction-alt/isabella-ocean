@@ -4,7 +4,8 @@
 | Video | Where | Status |
 |---|---|---|
 | Emulator backup (3:46, 2400×1080) | `.local/demo/isabella-ocean-demo.mp4` (a 720p copy is `isabella-ocean-demo-720p.mp4`) | Done 2 Oct |
-| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | **https://youtu.be/__YTxNECcDc** (file: `.local/demo/isabella-ocean-seeker-demo.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit. |
+| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | **https://youtu.be/__YTxNECcDc** (file: `.local/demo/isabella-ocean-seeker-demo.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit unless version 2 replaces it. |
+| **Version 2 of the Seeker demo** (1:47, 1080p, narrated) | `.local/demo/isabella-ocean-seeker-demo-v2.mp4` (a 720p copy is `…-v2-preview.mp4`; `…-v2-captions.mp4` adds captions) | **Cut 3 Oct from the same take; not uploaded yet.** No rotation flips, the waits cut, no captions, and a voiceover. |
 
 **What the emulator backup shows:**
 1. title card → the three free games;
@@ -22,12 +23,20 @@ Seeker recording, which uses the real Seed Vault Wallet, has no such issue.
 ## Recording on a real Seeker
 ```bash
 SEEKER_SERIAL=<adb serial> node test/e2e/record-seeker.js <wallet address>
-node test/e2e/edit-seeker.js
+node test/e2e/edit-seeker.js       # version 1: captions, wallet rounds at 2×, silent
+node test/e2e/edit-seeker-v2.js    # version 2: narrated; add --captions for the captioned copy
 ```
 - **What it does:** it taps through Isabella Ocean on the phone over USB and records the screen. The **phone's owner approves every wallet prompt**; the script never touches the wallet.
 - **What it needs:** a wallet account that has never bought World 2 and holds at least 1.15 devnet SOL. Send it SOL with `tools/keys/devbank/send.js`.
 - **Account check:** if a different account connects, it stops rather than record a misleading take. Picking the right account is the wallet's job: switch the wallet's active account first.
 - **The Seed Vault sheets do show in recordings.** They are portrait, so the editor zooms into them.
+- **Version 2 (`edit-seeker-v2.js`):**
+  - **No flip.** The wallet is portrait and the game is landscape, so the raw take shows the game sideways in a narrow strip each time the wallet opens. Version 2 never shows those frames: each wallet round is an upright phone panel over a blurred, dimmed game frame, joined by short crossfades.
+  - **Waits cut, nothing sped up.** About 109 s of the 210 s take is removed: wallet and confirmation waits, pauses and repeats.
+  - **Voiceover.** One line per step, spoken by the Mac's `say` (voice from `VOICE`, default Karen), mixed to −16 LUFS. A line never overlaps the next or outruns its section; the script stops if one would.
+  - **The wallet picker.** The "select a wallet" screen is not in the cut. On the "Continue with" sheet, the other account's card is blurred in every frame.
+  - **It is tied to this take.** The cut list is in raw seconds, so the script refuses a take with a different frame count.
+  - **Checks it leaves behind:** contact sheets and a timeline in `.local/demo/v2-check/`.
 - **Blurring other accounts:** the wallet's account picker lists the phone's other wallets. `edit-seeker.js` blurs that card during the picker windows. Re-check the windows, frame by frame, for any new take.
 - **Output:** `.local/demo/isabella-ocean-seeker-raw.mp4` and `seeker.log`, then the edited `isabella-ocean-seeker-demo.mp4` (≤3 min, with captions and the wallet rounds at 2×).
 
