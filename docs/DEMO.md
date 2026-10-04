@@ -3,9 +3,10 @@
 ## Videos
 | Video | Where | Status |
 |---|---|---|
-| Emulator backup (3:46, 2400×1080) | `.local/demo/isabella-ocean-demo.mp4` (a 720p copy is `isabella-ocean-demo-720p.mp4`) | Done 2 Oct |
-| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | **https://youtu.be/__YTxNECcDc** (file: `.local/demo/isabella-ocean-seeker-demo.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit unless version 2 replaces it. **It no longer matches the app:** it shows "Pay US$15 once" and the old title screen with four game buttons. |
-| **Version 2 of the Seeker demo** (1:47, 1080p, narrated) | `.local/demo/isabella-ocean-seeker-demo-v2.mp4` (a 720p copy is `…-v2-preview.mp4`; `…-v2-captions.mp4` adds captions) | **Cut 3 Oct from the same take; not uploaded yet.** No rotation flips, the waits cut, no captions, and a voiceover. **It no longer matches the app either:** same footage, and the voiceover says the old US$15 price. |
+| **The CLOCK IN demo, filmed on a real Seeker** (1:47, 1080p, narrated) | **https://youtu.be/aEXbmt3iq5U** (files: `.local/demo/isabella-ocean-demo-v3.mp4`, and `…-v3-phone.mp4`, a 1280-wide copy under 10 MB) | **This is the demo. Filmed and uploaded 5 Oct** on a Seeker running version 2.5, with the real Seed Vault Wallet on devnet. It shows the title with three games and "+", the more-games screen (nine games), a Sea Jigsaw puzzle, the parent gate, "Pay US$4.99 once", then stake 1 SOL → World 2 opens → instant exit → World 2 locks → pay once (0.1 devnet SOL) → open. A neural voice narrates it (Kokoro, "Heart"). Cut with `test/e2e/edit-seeker-v3.js`. |
+| Emulator backup (3:46, 2400×1080) | `.local/demo/isabella-ocean-demo.mp4` (a 720p copy is `isabella-ocean-demo-720p.mp4`) | Done 2 Oct. Made on the earlier build (US$15). |
+| First Seeker cut (2:48, 1080p, captions, silent) | https://youtu.be/__YTxNECcDc (file: `.local/demo/isabella-ocean-seeker-demo.mp4`) | **Superseded 5 Oct.** Filmed 3 Oct on the earlier build: five games and "Pay US$15 once". |
+| Version 2 of that cut (1:47, 1080p, narrated) | `.local/demo/isabella-ocean-seeker-demo-v2.mp4` (a 720p copy is `…-v2-preview.mp4`; `…-v2-captions.mp4` adds captions) | **Superseded 5 Oct; never uploaded.** Cut 3 Oct from the same take as the first cut, so it shows five games, and its voiceover says US$15. |
 
 **What the emulator backup shows:**
 1. title card → the three free games;
@@ -20,29 +21,52 @@ wallet's first connect screen reads "Status: Verification failed". That is its 3
 check timing out on the emulator's slow first connection; the later steps were unaffected. The
 Seeker recording, which uses the real Seed Vault Wallet, has no such issue.
 
-**Since 4 Oct 2026 the app has nine games and the one-off price is US$4.99.** Every video above was
-made before that. The captions and narration in `test/e2e/edit-seeker.js` and `edit-seeker-v2.js`
-say US$15 because the footage shows US$15; they change only with a new take.
+**Since 4 Oct 2026 the app has nine games and the one-off price is US$4.99.** The 5 Oct demo shows
+both. The three older videos were made before that: the captions and narration in
+`test/e2e/edit-seeker.js` and `edit-seeker-v2.js` say US$15 because their footage shows US$15, and
+both scripts stay as they are for that older take.
 
 ## Recording on a real Seeker
 ```bash
 SEEKER_SERIAL=<adb serial> node test/e2e/record-seeker.js <wallet address>
+node test/e2e/edit-seeker-v3.js    # the 5 Oct demo: narrated, no captions
+```
+- **What it does:** it taps through Isabella Ocean on the phone over USB and records the screen. The **phone's owner approves every wallet prompt**; the script never touches the wallet.
+- **The storyboard:** title → "+" (the six more games) → Sea Jigsaw, one puzzle → title → World 1 → World 2 locked → the parent gate → Stake 1 SOL → World 2 opens → a little play → Grown-ups → Get my SOL back now → World 2 locks → Pay once → World 2 open.
+- **What it needs:**
+  - the Seeker on USB and awake, with Isabella Ocean 2.5 or later (nine games);
+  - a devnet wallet account that has never bought World 2, holds no stake, and has at least 1.15 devnet SOL (send it SOL with `tools/keys/devbank/send.js`);
+  - the app's save at "World 1 finished". If the save is short of that, the script stops, because level 11 would stay shut after the stake.
+- **Switches** (environment variables):
+  - `SEEKER_PRESET_SAVE=1` writes the "World 1 finished" save when the save is short of it.
+  - `SEEKER_MINIGAME=0` leaves the Sea Jigsaw puzzle out; the "+" screen is still shown.
+  - `SEEKER_RELOCK=quick` goes straight from Grown-ups to the unlock screen after the exit. By default the take shows World 2's padlocks and passes the parent gate again.
+- **Rehearsing without a phone:** `node test/e2e/record-seeker.js --dry-run <any wallet address>` runs the same storyboard in headless Chrome at the Seeker's screen shape, with a mock wallet (`test/e2e/seeker-dry.js`). It needs no phone, no adb and no network. It keeps a screenshot for each step and reports any page exception or repeated log line.
+- **Account check:** if a different account connects, it stops rather than record a misleading take. Picking the right account is the wallet's job: switch the wallet's active account first.
+- **The Seed Vault sheets do show in recordings.** They are portrait, so the editor shows each one as an upright phone panel.
+- **Output:** `.local/demo/isabella-ocean-seeker-raw.mp4` and `seeker.log`. The editor cuts by the log's lines. An earlier take's two files are kept beside them as `*.before-<time>.*`.
+
+### The cut (`edit-seeker-v3.js`)
+- **Output:**
+  - `.local/demo/isabella-ocean-demo-v3.mp4`, at the size it was recorded;
+  - `…-v3-phone.mp4`, 1280 wide and under 10 MB;
+  - `.local/demo/v3-check/timeline.json` and `narration.srt`, which record what the edit decided.
+- **No flip.** The game is landscape and the wallet is portrait, so the raw take rotates at every wallet visit. Each visit is shown as an upright phone panel (the wallet sheet only) over a blurred still of the game screen it came from.
+- **Two recordings joined.** In the second one the recorder itself was portrait: there the wallet goes into the same panel and the game is enlarged to the full frame, so it is a little softer.
+- **Dead time cut, nothing sped up.** The joins are short crossfades.
+- **Voiceover.** One line per section, spoken by Kokoro (voice `af_heart`), mixed to −16 LUFS. The lines are in `NARRATION` and also become `narration.srt`. The script stops if the voice would be silent for more than 2.6 s between two lines.
+- **It needs things that are not in the repo:** `.local/tts` (the Kokoro model, its Python environment and `say.py`), ffmpeg and Chrome.
+- **Other accounts are blurred.** Only the stake's Connect visit shows account cards. On the "Continue with" sheet the cards under the chosen one are blurred; the picker itself is not in the cut.
+- **It is tied to this take.** The cut list, the privacy window and the join are raw times from one take, so the script refuses a take with a different frame count. A new take needs all three re-derived, frame by frame.
+
+### The older cuts (the 3 Oct take)
+```bash
 node test/e2e/edit-seeker.js       # version 1: captions, wallet rounds at 2×, silent
 node test/e2e/edit-seeker-v2.js    # version 2: narrated; add --captions for the captioned copy
 ```
-- **What it does:** it taps through Isabella Ocean on the phone over USB and records the screen. The **phone's owner approves every wallet prompt**; the script never touches the wallet.
-- **What it needs:** a wallet account that has never bought World 2 and holds at least 1.15 devnet SOL. Send it SOL with `tools/keys/devbank/send.js`.
-- **Account check:** if a different account connects, it stops rather than record a misleading take. Picking the right account is the wallet's job: switch the wallet's active account first.
-- **The Seed Vault sheets do show in recordings.** They are portrait, so the editor zooms into them.
-- **Version 2 (`edit-seeker-v2.js`):**
-  - **No flip.** The wallet is portrait and the game is landscape, so the raw take shows the game sideways in a narrow strip each time the wallet opens. Version 2 never shows those frames: each wallet round is an upright phone panel over a blurred, dimmed game frame, joined by short crossfades.
-  - **Waits cut, nothing sped up.** About 109 s of the 210 s take is removed: wallet and confirmation waits, pauses and repeats.
-  - **Voiceover.** One line per step, spoken by the Mac's `say` (voice from `VOICE`, default Karen), mixed to −16 LUFS. A line never overlaps the next or outruns its section; the script stops if one would.
-  - **The wallet picker.** The "select a wallet" screen is not in the cut. On the "Continue with" sheet, the other account's card is blurred in every frame.
-  - **It is tied to this take.** The cut list is in raw seconds, so the script refuses a take with a different frame count.
-  - **Checks it leaves behind:** contact sheets and a timeline in `.local/demo/v2-check/`.
-- **Blurring other accounts:** the wallet's account picker lists the phone's other wallets. `edit-seeker.js` blurs that card during the picker windows. Re-check the windows, frame by frame, for any new take.
-- **Output:** `.local/demo/isabella-ocean-seeker-raw.mp4` and `seeker.log`, then the edited `isabella-ocean-seeker-demo.mp4` (≤3 min, with captions and the wallet rounds at 2×).
+- Both are kept for the 3 Oct take only. Version 2 refuses a take with a different frame count; version 1's blur windows were found frame by frame in that take.
+- **Version 1** writes `isabella-ocean-seeker-demo.mp4` (≤3 min, with captions and the wallet rounds at 2×). It blurs the other account's card during the wallet-picker windows.
+- **Version 2** shows each wallet round as an upright phone panel, cuts about 109 s of the 210 s take, and has one voiceover line per step spoken by the Mac's `say` (voice from `VOICE`, default Karen). Its checks are in `.local/demo/v2-check/`.
 
 ## Recording a take on the emulator
 ```bash
@@ -77,15 +101,14 @@ then sends it 1.2 devnet SOL once.
 
 ## The deck
 **https://claude.ai/artifact/RTPTuoaeKEf4GBhPQufksg** (a private Slides artifact; share it from its Share menu).
-- **12 slides:** cover → the problem → five games → what's free → two ways to unlock → how staking works → parents in control → pay once → the economics → tech → the demo → what's next.
+- **12 slides:** cover → the problem → nine games → what's free → two ways to unlock → how staking works → parents in control → pay once → the economics → tech → the demo → what's next.
 - **Facts:** every number comes from the research brief (`docs/kids-bundle/README.md` and the appendices):
   - 121,069 activated Seekers (2 Oct);
   - no kids titles on the dApp Store;
   - US$35–90 a year for kids' subscriptions elsewhere;
   - staking yield of 4.8–5.5%, about 0.05 SOL a year per family;
   - 0% store commission.
-- **Version 6 (3 Oct):** five games, the Seeker proof image and the demo video link. The last slide gives the site, the code, the demo and a contact.
-- **Out of date since 4 Oct:** the deck still says five games and US$15. Its games, what's-free, pay-once and economics slides need the nine games and US$4.99 before it is exported.
+- **Version 7 (5 Oct):** nine games with a screenshot each, US$4.99, the new title and unlock screens, and the 5 Oct demo video link (1:47). The last slide gives the site, the code, the demo and a contact.
 
 ## For judges trying the APK on a Seeker (draft)
 1. Install the APK. The free games and Isabella's World 1 work offline.

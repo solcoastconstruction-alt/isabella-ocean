@@ -13,9 +13,9 @@ of two ways:
 There are no accounts, no ads, no tracking and no backend: the unlock is read from the chain. It
 runs on devnet today (see [Status](#status)).
 
-- **Demo video** (2:48), filmed on a real Seeker with the Seed Vault Wallet on devnet:
-  <https://youtu.be/__YTxNECcDc>. It was filmed on an earlier build, so it shows five games and a
-  US$15 price; the app now has nine games and costs US$4.99.
+- **Demo video** (1:47), filmed on a real Seeker running version 2.5, with the Seed Vault Wallet
+  on devnet: <https://youtu.be/aEXbmt3iq5U>. It shows the nine games, a Sea Jigsaw puzzle, the
+  parent gate, then stake 1 SOL, instant exit and "Pay US$4.99 once" (0.1 devnet SOL).
 - **Website:** <https://isabellaocean-app.pages.dev>
 - **APK**, the devnet test build: <https://isabellaocean-app.pages.dev/isabella-ocean.apk>
 - **Docs:** [`docs/`](docs/README.md), one page per topic: [games](docs/GAMES.md),
