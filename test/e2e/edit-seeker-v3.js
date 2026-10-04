@@ -30,6 +30,7 @@ const LOG = files[0] || path.join(OUT, 'seeker.log');
 const RAW = files[1] || path.join(OUT, 'isabella-ocean-seeker-raw.mp4');
 const VOICE = 'af_heart', LANG = 'en-us';
 const FPS = 30, LEAD = 0.25, TAIL = 0.4;           // a line starts LEAD into its section and ends TAIL before the next
+const QUIET = 2.6;                                 // the longest the voice may be silent between two lines (s)
 const COLOR = ['-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv'];
 
 function run(cmd, args, opts = {}) {
@@ -62,8 +63,13 @@ const NARRATION = {
 const SAY_AS = [
   [/World 1\b/g, 'World One'], [/World 2\b/g, 'World Two'], [/\b1 SOL\b/g, 'one SOL'], [/0\.3%/g, 'zero point three percent'],
   [/US\$4\.99/g, 'four dollars ninety-nine'], [/\bSKR\b/g, 'S K R'], [/\bdevnet\b/g, 'dev net'],
+  [/\bSOL\b/g, 'sole'],                             // one word, like "soul": as capitals Kokoro spells it out, letter by letter
 ];
-const spoken = (text) => SAY_AS.reduce((s, [re, to]) => s.replace(re, to), text);
+const spoken = (text) => {
+  const s = SAY_AS.reduce((t, [re, to]) => t.replace(re, to), text);
+  if (/\bSOL\b/.test(s)) throw new Error(`"SOL" would be spelled out by the voice in: ${s}`);
+  return s;
+};
 const SPEED = {};                                    // per line, only where a line must fit its footage (none does)
 
 // The only place that knows which speech engine is used: one line of text in, a mono 48 kHz wav out.
@@ -190,7 +196,8 @@ const EDL = [
   { kind: 'card', card: 'title', sec: 'title', x: 0 },
   // the title: three games and "+" → the more-games screen: nine games → Sea Jigsaw's puzzles
   G(0.10, 8.70, { x: 0.3, sec: 'real', marks: [[7.60, 'jigsaw']] }),
-  G(9.50, 24.25),                                                // puzzle 1 solved piece by piece; the key; the chest; the reward
+  G(11.00, 15.90),                                               // puzzle 1 solved piece by piece
+  G(17.00, 22.30),                                               // the key; the chest bursts open
   // the title again → the map opens on World 2 (padlocks) → World 1 → World 2, a locked level, "Ask a grown-up"
   G(25.20, 33.00, { sec: 'gate' }),
   G(33.72, 45.15, { marks: [[37.60, 'choices']] }),              // the hold ring fills (3 s); the sum; the two choices; tap Stake
@@ -199,27 +206,26 @@ const EDL = [
   P(60.47, 64.35),                                               // Transaction: -1.01 SOL, +1.01 OCEAN; trust; tap Approve
   P(69.55, 71.28),                                               // Processing → Success
   P(71.75, 73.65),                                               // Success, with the transaction ID
-  G(74.70, 87.50, { x: 0.3, sec: 'open' }),                      // "Unlocking World 2" → "World 2!" → the map → "Level 11" → a swim
-  G(96.40, 98.20, { x: 0.3, sec: 'exit' }),                      // the title, tap the grown-ups button → the gate
+  G(74.70, 80.00, { x: 0.3, sec: 'open' }),                      // "Unlocking World 2" → "World 2!" → the map, level 11 open
+  G(81.90, 85.90),                                               // "Level 11" → a swim
+  G(96.70, 98.20, { x: 0.3, sec: 'exit' }),                      // the title, tap the grown-ups button → the gate
   G(100.20, 101.15),                                             // the hold ring fills
   G(103.00, 103.90),                                             // the sum answered
-  G(107.80, 114.60),                                             // "Staked ✓" → "Get your SOL back now?" → "Getting your SOL back"
-  P(121.55, 123.60, { x: 0.3 }),                                 // Transaction: +1.01 SOL, -1.01 OCEAN; trust; tap Approve
+  G(108.60, 114.20),                                             // "Staked ✓" → "Get your SOL back now?" → "Getting your SOL back"
+  P(121.90, 123.60, { x: 0.3 }),                                 // Transaction: +1.01 SOL, -1.01 OCEAN; trust; tap Approve
   P(124.35, 125.75),                                             // "Double tap to confirm"
   P(126.95, 128.60),                                             // fingerprint: "Approved"
-  P(130.10, 131.75),                                             // Processing
-  P(133.30, 135.55, { sec: 'back' }),                            // Success
-  G(136.55, 139.60, { x: 0.3 }),                                 // "Your SOL is back … World 2 is locked again"
-  G(140.72, 142.20),                                             // grown-ups: "Not unlocked"
-  G(144.60, 146.75),                                             // World 2: padlocks again
+  P(133.67, 135.55, { sec: 'back' }),                            // Success
+  G(136.55, 139.15, { x: 0.3 }),                                 // "Your SOL is back … World 2 is locked again"
+  G(145.05, 146.75),                                             // World 2: padlocks again
   G(147.20, 148.25, { sec: 'pay' }),                             // "Ask a grown-up"
   G(151.40, 152.18),                                             // the third gate, only its end
-  G(154.10, 163.40),                                             // the sum → "Pay US$4.99 once" → "Looking in your wallet" → choose a token: 0.1 SOL → "Approve the payment"
+  G(154.10, 162.70),                                             // the sum → "Pay US$4.99 once" → "Looking in your wallet" → choose a token: 0.1 SOL → "Approve the payment"
   P(168.90, 169.93, { x: 0.3 }),                                 // Transaction: -0.1 SOL
   P(170.20, 170.83),                                             // trust; tap Approve
   P(171.70, 172.85),                                             // "Double tap to confirm"
-  P(174.00, 175.60),                                             // fingerprint: "Approved"
-  P(177.00, 178.60),                                             // Processing
+  P(174.10, 175.60),                                             // fingerprint: "Approved"
+  P(177.10, 178.50),                                             // Processing
   P(182.20, 183.40, { sec: 'paid' }),                            // Success
   G(185.36, 190.95, { x: 0.3 }),                                 // "Unlocking World 2" → "World 2!"
   { kind: 'card', card: 'end', sec: 'end', x: 0.3 },
@@ -279,6 +285,7 @@ for (const c of EDL) if (c.kind === 'wallet') for (let f = c.fa; f < c.fb; f++) 
     if (s.lineEnd + (i + 1 < sections.length ? TAIL - LEAD : 0) > sec(s.end) + 0.02) throw new Error(`"${s.id}" (${lines[s.id].dur.toFixed(2)}s) does not fit its section (${sec(s.end - s.start).toFixed(2)}s): keep more footage there`);
   });
   if (Object.keys(NARRATION).some((id) => !sections.find((s) => s.id === id))) throw new Error('a narration line has no section');
+  sections.forEach((s, i) => { const gap = i ? s.lineStart - sections[i - 1].lineEnd : 0; if (gap > QUIET) throw new Error(`${gap.toFixed(2)}s of silence before "${s.id}": trim footage there`); });
   if (sec(TOTAL) > 175) throw new Error(`the cut is ${sec(TOTAL).toFixed(1)}s: over the 2:55 limit`);
 
   // ---- cards and the panel's shape (headless Chrome)
