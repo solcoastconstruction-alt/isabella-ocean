@@ -11,12 +11,13 @@ WebView app: no framework, no androidx.
 | Internet | never used | Solana RPC and Jupiter only |
 | Distribution | installed directly | Solana dApp Store (TODO.md) |
 
-- **Version:** 2.2 (versionCode 4), with `compileSdk`/`targetSdk` 36 and `minSdk` 26.
+- **Java:** build with Java 17 (Homebrew `openjdk@17`). Android Studio's bundled Java is now 25, which Gradle 8.11 rejects ("Unsupported class file major version 69").
+- **Version:** 2.3 (versionCode 5), with `compileSdk`/`targetSdk` 36 and `minSdk` 26.
 - **Flavor assets:** `android/app/src/<flavor>/assets/flavor.js` overrides `web/flavor.js`.
 
 ## Build
 ```bash
-cd android && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:assembleFamilyDebug :app:assembleStoreDebug
+cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleFamilyDebug :app:assembleStoreDebug
 ```
 The APKs land in `android/app/build/outputs/apk/<flavor>/debug/`. To check what a build packed, run
 `unzip -l <apk> | grep assets/`.

@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- Sea Jigsaw: all thirty pictures on one page, drawn by the game's own pictures.js (a contact sheet for looking at
+     the art), and the measurements test/games/jigsaw/browser.js makes of them.
+       sheet.html            all thirty, each with its puzzle number and piece count
+       sheet.html?cuts=1     ...with the jigsaw cut drawn over each
+       sheet.html?id=e3      one puzzle's picture, full size (add &cuts=1 for its cut) -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sea Jigsaw: the pictures</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin:0; background:#12233c; font-family: system-ui, Roboto, sans-serif; color:#fff; }
+  #grid { display:grid; grid-template-columns:repeat(6, 300px); gap:10px 10px; padding:12px; width:max-content; }
+  .cell { position:relative; }
+  .cell canvas { display:block; width:300px; height:187.5px; border-radius:6px; }
+  .cell .tag { position:absolute; left:6px; top:6px; background:rgba(0,20,50,0.72); border-radius:10px; padding:2px 8px; font-size:13px; font-weight:800; }
+  #one { display:block; margin:12px; }
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<script>
+// the game's own logic.js and pictures.js; ?game=<url of another copy's folder> measures that copy instead (bite.js)
+(function () {
+  const base = new URLSearchParams(location.search).get('game') || '../../../web/games/jigsaw';
+  const load = (f) => new Promise((ok, no) => { const s = document.createElement('script'); s.src = base + '/' + f; s.onload = ok; s.onerror = () => no(new Error('cannot load ' + f)); document.head.appendChild(s); });
+  load('logic.js').then(() => load('pictures.js')).then(main);
+})();
+function main() {
+  'use strict';
+  const L = JigsawLogic, P = JigsawPictures, q = new URLSearchParams(location.search), cuts = q.get('cuts') === '1';
+  // one puzzle's picture on a new canvas, w px wide; cutOver draws its jigsaw cut on top
+  function render(p, w, cutOver) {
+    const h = Math.round((w * L.PH) / L.PW), c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    P.paint(p.pic, g, w, h);
+    if (cutOver) {
+      g.save(); g.scale(w / L.PW, h / L.PH);
+      g.lineJoin = 'round';
+      for (const pass of [0, 1]) {
+        g.strokeStyle = pass ? '#ffffff' : 'rgba(0,20,50,0.6)'; g.lineWidth = pass ? 1.6 : 4;
+        for (const piece of L.cut(p).pieces) {
+          g.beginPath();
+          for (const s of piece.path) { if (s[0] === 'M') g.moveTo(s[1], s[2]); else if (s[0] === 'L') g.lineTo(s[1], s[2]); else g.bezierCurveTo(s[1], s[2], s[3], s[4], s[5], s[6]); }
+          g.closePath(); g.stroke();
+        }
+      }
+      g.restore();
+    }
+    return c;
+  }
+  const one = q.get('id') && L.byId[q.get('id')];
+  if (one) {
+    document.getElementById('grid').remove();
+    const c = render(one, Math.round(L.PW * 2), cuts);
+    c.id = 'one'; c.style.width = L.PW + 'px'; c.style.height = L.PH + 'px';
+    document.body.appendChild(c);
+  } else {
+    const grid = document.getElementById('grid');
+    for (const p of L.PUZZLES) {
+      const cell = document.createElement('div'); cell.className = 'cell';
+      const c = render(p, 600, cuts);
+      const tag = document.createElement('div'); tag.className = 'tag';
+      tag.textContent = `${p.mode} ${p.n}  ${p.pic}  ${p.cols}x${p.rows} = ${p.pieces}`;
+      cell.appendChild(c); cell.appendChild(tag); grid.appendChild(cell);
+    }
+  }
+
+  // ---- measurements (run by browser.js) ----
+  // Each picture is drawn 416 x 260 (half a pixel a unit). An "edge" is a pixel whose colour differs from its
+  // neighbours: weak = at least WEAK levels (of 255) in some channel, strong = at least STRONG.
+  const MW = 416, MH = 260, WEAK = 12, STRONG = 34;
+  function measure(p) {
+    const c = render(p, MW, false), d = c.getContext('2d').getImageData(0, 0, MW, MH).data;
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < d.length; i++) { hash ^= d[i]; hash = Math.imul(hash, 16777619); }
+    const weak = new Uint8Array(MW * MH), strong = new Uint8Array(MW * MH);
+    for (let y = 1; y < MH - 1; y++) {
+      for (let x = 1; x < MW - 1; x++) {
+        const i = (y * MW + x) * 4;
+        let g = 0;
+        for (let k = 0; k < 3; k++) g = Math.max(g, Math.abs(d[i + 4 + k] - d[i - 4 + k]), Math.abs(d[i + MW * 4 + k] - d[i - MW * 4 + k]));
+        if (g >= WEAK) weak[y * MW + x] = 1;
+        if (g >= STRONG) strong[y * MW + x] = 1;
+      }
+    }
+    // summed-area tables, so any rectangle's edge count is four look-ups
+    const sat = (a) => { const s = new Int32Array((MW + 1) * (MH + 1)); for (let y = 0; y < MH; y++) { let row = 0; for (let x = 0; x < MW; x++) { row += a[y * MW + x]; s[(y + 1) * (MW + 1) + x + 1] = s[y * (MW + 1) + x + 1] + row; } } return s; };
+    const SW = sat(weak), SS = sat(strong);
+    const sum = (S, x0, y0, x1, y1) => S[y1 * (MW + 1) + x1] - S[y0 * (MW + 1) + x1] - S[y1 * (MW + 1) + x0] + S[y0 * (MW + 1) + x0];
+    // the biggest square with (almost) nothing in it: fewer than 1 pixel in 200 is even a weak edge
+    let flat = 0, flatAt = '';
+    for (let s = Math.min(MW, MH); s >= 4 && !flat; s -= 2) {
+      const lim = (s * s) / 200;
+      for (let y = 0; y + s <= MH && !flat; y += 2) for (let x = 0; x + s <= MW; x += 2) if (sum(SW, x, y, x + s, y + s) < lim) { flat = s; flatAt = `${x * 2},${y * 2}`; break; }
+    }
+    // the piece with the least to go by: the share of its own square that is a strong edge
+    let least = 1, leastAt = '';
+    const cw = MW / p.cols, ch = MH / p.rows;
+    for (let r = 0; r < p.rows; r++) for (let cc = 0; cc < p.cols; cc++) {
+      const x0 = Math.round(cc * cw), y0 = Math.round(r * ch), x1 = Math.round((cc + 1) * cw), y1 = Math.round((r + 1) * ch);
+      const f = sum(SS, x0, y0, x1, y1) / ((x1 - x0) * (y1 - y0));
+      if (f < least) { least = f; leastAt = `${cc},${r}`; }
+    }
+    // a 16 x 10 thumbnail (the average colour of each block), for telling pictures apart
+    const thumb = [];
+    for (let by = 0; by < 10; by++) for (let bx = 0; bx < 16; bx++) {
+      let r = 0, g = 0, b = 0;
+      for (let y = by * 26; y < by * 26 + 26; y++) for (let x = bx * 26; x < bx * 26 + 26; x++) { const i = (y * MW + x) * 4; r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+      thumb.push(Math.round(r / 676), Math.round(g / 676), Math.round(b / 676));
+    }
+    const minCell = Math.min(p.cw, p.ch);
+    return { id: p.id, pic: p.pic, hash: (hash >>> 0).toString(16), flatUnits: flat * 2, flatAt, flatShare: +((flat * 2) / minCell).toFixed(3), least: +least.toFixed(4), leastAt,
+      weakShare: +(sum(SW, 0, 0, MW, MH) / (MW * MH)).toFixed(4), strongShare: +(sum(SS, 0, 0, MW, MH) / (MW * MH)).toFixed(4), thumb };
+  }
+  function metrics() {
+    const rows = L.PUZZLES.map(measure);
+    // how different the two most alike pictures are: the mean difference of their thumbnails, 0..255
+    let closest = { d: Infinity };
+    for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) {
+      let s = 0;
+      for (let k = 0; k < rows[i].thumb.length; k++) s += Math.abs(rows[i].thumb[k] - rows[j].thumb[k]);
+      const dd = s / rows[i].thumb.length;
+      if (dd < closest.d) closest = { d: +dd.toFixed(2), a: rows[i].id, b: rows[j].id };
+    }
+    return { rows: rows.map((r) => { const o = Object.assign({}, r); delete o.thumb; return o; }), distinctHashes: new Set(rows.map((r) => r.hash)).size, closest };
+  }
+  // every picture as a 16 x 10 thumbnail, by puzzle id (browser.js checks the game puts the same picture on its board)
+  const thumbs = () => Object.fromEntries(L.PUZZLES.map((p) => [p.id, measure(p).thumb]));
+  window.__sheet = { metrics, thumbs, measure: (id) => { const m = measure(L.byId[id]); delete m.thumb; return m; }, ready: true };
+}
+</script>
+</body>
+</html>

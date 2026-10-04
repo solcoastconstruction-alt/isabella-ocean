@@ -1,0 +1,173 @@
+<!doctype html>
+<!-- Treasure Blocks: sea blocks sink into a well with a picture of Isabella behind it. Slide and turn each piece;
+     a full row sparkles away, clears a band of mist from the picture and pays a gold coin. Enough rows earn a key,
+     and the treasure chest bursts with the coins earned. Three sizes, picked by picture. Every game is new.
+     No words to read, nothing to lose: on the small size a wave washes a full well clean and play goes on.
+     Standalone page; the hub links here, and the home button / Android back button return to ../../index.html. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Treasure Blocks</title>
+<link rel="icon" href="data:,">
+<style>
+  /* Buttons, outlines and the results card follow the main game's web/index.html and Sea Words. */
+  :root { --gold1:#fff1a0; --gold2:#ffc21a; --gold3:#d98a00; --pad:min(27vh, 12.2vw); --edge:3.5vh; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#1f8fc0; touch-action:none;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+    font-family: system-ui, Roboto, sans-serif; }
+  canvas#c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  .screen { position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; }
+  .screen.on { display:flex; }
+  button { font:inherit; color:inherit; border:none; padding:0; cursor:pointer; background:none; touch-action:manipulation; }
+  .btn { width:24vh; height:24vh; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 35% 28%, var(--gold1), var(--gold2) 55%, var(--gold3));
+    box-shadow:0 1.3vh 0 #a86400, 0 2.5vh 4vh rgba(0,0,0,0.3); transition:transform .08s; }
+  .btn:active, .btn.down { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #a86400; }
+  .btn svg { width:56%; height:56%; fill:#fff; filter:drop-shadow(0 .4vh 0 rgba(150,80,0,0.6)); }
+  .btn.md { width:19vh; height:19vh; }
+  .btn.sm { width:15vh; height:15vh; }
+  .btn.blue { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); box-shadow:0 1.3vh 0 #145f8a, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.pink { background:radial-gradient(circle at 35% 28%, #ffd1ea, #ff6fb0 55%, #d63384); box-shadow:0 1.3vh 0 #9c1f5c, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.blue svg, .btn.pink svg { filter:drop-shadow(0 .4vh 0 rgba(0,0,0,0.25)); }
+  .btn.blue:active, .btn.blue.down { box-shadow:0 .3vh 0 #145f8a; }
+  .btn.pink:active, .btn.pink.down { box-shadow:0 .3vh 0 #9c1f5c; }
+  .row { display:flex; gap:4vh; align-items:center; justify-content:center; }
+  /* Outlines are stacked drop-shadows (-webkit-text-stroke left stray lines inside letters on the Seeker). */
+  .ol-brown { filter:drop-shadow(.6vh 0 0 #b0480c) drop-shadow(-.6vh 0 0 #b0480c) drop-shadow(0 .6vh 0 #b0480c) drop-shadow(0 -.6vh 0 #b0480c) drop-shadow(0 1vh 0 rgba(120,30,0,0.35)); }
+
+  /* corner buttons: a small disc inside a full 19vh touch area */
+  .corner { position:fixed; width:19vh; height:19vh; display:flex; align-items:center; justify-content:center; z-index:10; }
+  .corner .btn { pointer-events:none; }
+  .corner:active .btn { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #145f8a; }
+  #homeBtn { top:2vh; left:max(2vh, env(safe-area-inset-left)); }
+  #modesBtn { top:23vh; left:max(2vh, env(safe-area-inset-left)); display:none; }
+  #modesBtn.on { display:flex; }
+  #soundBtn { bottom:2vh; left:max(2vh, env(safe-area-inset-left)); }
+  #soundBtn .btn { width:13vh; height:13vh; }
+
+  /* the four big play buttons: left and right on the left of the well, drop and turn on the right */
+  .pad { position:fixed; bottom:var(--edge); width:var(--pad); height:var(--pad); display:none; z-index:8; transition:transform .08s, opacity .3s; }
+  .pad.on { display:flex; }
+  .pad.away { opacity:0; pointer-events:none; }
+  .pad svg { width:58%; height:58%; }
+  #padLeft { left:max(var(--edge), env(safe-area-inset-left)); }
+  #padRight { left:calc(max(var(--edge), env(safe-area-inset-left)) + var(--pad) + 4vh); }
+  #padTurn { right:max(var(--edge), env(safe-area-inset-right)); }
+  #padDrop { right:calc(max(var(--edge), env(safe-area-inset-right)) + var(--pad) + 4vh); }
+
+  /* the picker: three sizes of well, shown as pictures (no words) */
+  .title { position:fixed; top:2.5vh; left:0; right:0; text-align:center; pointer-events:none; }
+  .title .t1 { display:inline-block; font-size:min(13vh, 6.6vw); font-weight:900; letter-spacing:.3vh; line-height:1.05;
+    background:linear-gradient(180deg,#fff7b0,#ffd23f 45%,#ff9f1c); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .moderow { display:flex; gap:min(7vh, 4vw); align-items:flex-start; justify-content:center; margin-top:10vh; }
+  .modecol { display:flex; flex-direction:column; align-items:center; gap:3.5vh; }
+  .mode { width:min(32vh, 24vw); height:min(32vh, 24vw); border-radius:50%; display:flex; align-items:center; justify-content:center; border:.7vh solid #fff; box-sizing:border-box;
+    box-shadow:0 1.3vh 0 rgba(0,40,80,0.45), inset 0 -2vh 3vh rgba(0,0,0,0.18), inset 0 2vh 2.5vh rgba(255,255,255,0.5); transition:transform .08s; }
+  .mode:active { transform:translateY(.8vh) scale(0.98); }
+  .mode svg { width:70%; height:70%; overflow:visible; }
+  .mode.easy { background:radial-gradient(circle at 35% 28%, #dafff5, #2ec4a6 55%, #138a74); }
+  .mode.medium { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); }
+  .mode.hard { background:radial-gradient(circle at 35% 28%, #f4e3ff, #b46cf0 55%, #7a2fc0); }
+  .mode.last { animation:bob 1.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform:translateY(-1.6vh) scale(1.03); } }
+  .cnt { display:flex; align-items:center; gap:1vh; padding:.9vh 2.6vh .9vh 1.8vh; border-radius:6vh; background:rgba(255,255,255,0.92); color:#c77700;
+    font-size:5.5vh; font-weight:900; line-height:1; box-shadow:0 .8vh 0 rgba(0,40,80,0.3); pointer-events:none; }
+  .cnt svg { width:9vh; height:4.5vh; }
+  .pill { position:fixed; top:4vh; right:4vh; display:flex; align-items:center; gap:1.2vh; padding:1.4vh 3vh 1.4vh 1.8vh;
+    border-radius:7vh; background:rgba(255,255,255,0.92); color:#c77700; font-size:5.5vh; font-weight:900; box-shadow:0 1vh 0 rgba(0,40,80,0.35); pointer-events:none; }
+  .coin { display:inline-block; width:6.5vh; height:6.5vh; border-radius:50%; background:radial-gradient(circle at 35% 30%, #fff6b0, #ffd633 45%, #e8a200); box-shadow:inset 0 0 0 .55vh rgba(180,110,0,0.5); }
+
+  /* results: a card to the right of the well, so the picture, the chest and Isabella stay in view */
+  .card { position:fixed; left:82%; top:50%; transform:translate(-50%,-50%); background:#fff; border-radius:6vh; padding:5vh 4.5vh 5vh;
+    display:flex; flex-direction:column; align-items:center; gap:3.5vh; box-shadow:0 2vh 0 rgba(0,40,80,0.3); border:.8vh solid #ffd23f; }
+  .trophy { position:absolute; top:-5vh; right:-3vh; display:flex; align-items:center; gap:.8vh; padding:1vh 2.4vh 1vh 1.6vh; border-radius:6vh; background:#fff;
+    color:#c77700; font-size:5.5vh; font-weight:900; line-height:1; box-shadow:0 .8vh 0 rgba(0,40,80,0.3); border:.5vh solid #ffd23f; }
+  .trophy svg { width:6.5vh; height:6.5vh; }
+  .won { display:flex; flex-direction:column; align-items:center; gap:2.5vh; }
+  .won .coins { display:flex; align-items:center; gap:2vh; font-size:13vh; font-weight:900; color:#d98a00; line-height:1; transform:scale(0); }
+  .won .coins .coin { width:13vh; height:13vh; box-shadow:inset 0 0 0 1vh rgba(180,110,0,0.5); }
+  .won .keyic { width:24vh; height:12vh; transform:scale(0); }
+  .won .pop { animation:pop .5s cubic-bezier(.3,1.8,.5,1) forwards; }
+  @keyframes pop { to { transform:scale(1); } }
+  #resGo { animation:nudge 1.8s ease-in-out 1.6s infinite; }
+  @keyframes nudge { 0%, 70%, 100% { transform:scale(1); } 80% { transform:scale(1.08); } 90% { transform:scale(0.98); } }
+
+  /* held upright? (the Android app is always landscape) */
+  #rotate { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:#1f8fc0; z-index:20; }
+  #rotate svg { width:40vw; height:40vw; fill:#fff; animation:turn 2s ease-in-out infinite; }
+  @keyframes turn { 0%,25% { transform:rotate(0); } 60%,100% { transform:rotate(-90deg); } }
+  @media (orientation: portrait) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 2.5 1.5 12H5v9h5.5v-6h3v6H19v-9h3.5z"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M3 4v16l9-8zM12 4v16l9-8z"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><path d="M12 4V0L6 6l6 6V8a6 6 0 1 1-6 6H3a9 9 0 1 0 9-10z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3.6"/><circle cx="18" cy="6" r="3.6"/><circle cx="6" cy="18" r="3.6"/><circle cx="18" cy="18" r="3.6"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zM16 7.5a6 6 0 0 1 0 9l-1.4-1.4a4 4 0 0 0 0-6.2zM18.8 4.7a10 10 0 0 1 0 14.6l-1.4-1.4a8 8 0 0 0 0-11.8z"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zM15 8.4l1.4-1.4 2.6 2.6 2.6-2.6L23 8.4l-2.6 2.6 2.6 2.6-1.4 1.4-2.6-2.6-2.6 2.6-1.4-1.4 2.6-2.6z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 3v15h10V4z"/></symbol>
+    <symbol id="i-key" viewBox="0 0 64 32"><circle cx="13" cy="16" r="11" fill="#ffc21a" stroke="#a86a00" stroke-width="2.5"/><circle cx="13" cy="16" r="4.5" fill="#fff"/><rect x="22" y="12" width="38" height="8" rx="3" fill="#ffc21a" stroke="#a86a00" stroke-width="2.5"/><rect x="44" y="19" width="5" height="9" fill="#ffc21a" stroke="#a86a00" stroke-width="2"/><rect x="53" y="19" width="5" height="6" fill="#ffc21a" stroke="#a86a00" stroke-width="2"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><g fill="#ffd23f" stroke="#b86e00" stroke-width="1.3" stroke-linejoin="round"><path d="M6.6 5.2H3.6v1.6a3.8 3.8 0 0 0 3.6 3.8M17.4 5.2h3v1.6a3.8 3.8 0 0 1-3.6 3.8" fill="none" stroke-width="1.6"/><path d="M6.5 3h11v5a5.5 5.5 0 0 1-11 0z"/><path d="M10.6 13.2h2.8v3.6h-2.8z"/><path d="M7.4 16.8h9.2v3.6H7.4z"/></g><path d="M9 4.6v3.2" stroke="#fff6c0" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <!-- the play buttons: left, right, turn (a round arrow), drop (an arrow down onto a line) -->
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15.2 2.8c1.1-.9 2.8-.1 2.8 1.3v15.8c0 1.4-1.7 2.2-2.8 1.3L5.3 13.3a1.7 1.7 0 0 1 0-2.6z"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M8.8 2.8C7.7 1.9 6 2.7 6 4.1v15.8c0 1.4 1.7 2.2 2.8 1.3l9.9-7.9a1.7 1.7 0 0 0 0-2.6z"/></symbol>
+    <symbol id="i-turn" viewBox="0 0 24 24"><path d="M12 4V0l6 6-6 6V8a6 6 0 1 0 6 6h3a9 9 0 1 1-9-10z"/></symbol>
+    <symbol id="i-drop" viewBox="0 0 24 24"><path d="M9 1.5h6a1 1 0 0 1 1 1V9.5h3.3c.9 0 1.3 1 .7 1.7l-7.2 7.8a1.1 1.1 0 0 1-1.6 0L4 11.2c-.6-.7-.2-1.7.7-1.7H8V2.5a1 1 0 0 1 1-1z"/><rect x="3.5" y="20.3" width="17" height="2.7" rx="1.35"/></symbol>
+  </defs>
+</svg>
+
+<div id="modes" class="screen on">
+  <div class="title"><span class="t1 ol-brown" id="title">Treasure Blocks</span></div>
+  <div class="moderow">
+    <div class="modecol">
+      <button id="mode-easy" class="mode easy" data-mode="easy" aria-label="Small well: little pieces, slow"><svg viewBox="0 0 100 100" id="pic-easy"></svg></button>
+      <div class="cnt"><svg viewBox="0 0 64 32"><use href="#i-key"/></svg><span id="cnt-easy">0</span></div>
+    </div>
+    <div class="modecol">
+      <button id="mode-medium" class="mode medium" data-mode="medium" aria-label="Middle well: bigger pieces"><svg viewBox="0 0 100 100" id="pic-medium"></svg></button>
+      <div class="cnt"><svg viewBox="0 0 64 32"><use href="#i-key"/></svg><span id="cnt-medium">0</span></div>
+    </div>
+    <div class="modecol">
+      <button id="mode-hard" class="mode hard" data-mode="hard" aria-label="Big well: the biggest pieces, getting quicker"><svg viewBox="0 0 100 100" id="pic-hard"></svg></button>
+      <div class="cnt"><svg viewBox="0 0 64 32"><use href="#i-key"/></svg><span id="cnt-hard">0</span></div>
+    </div>
+  </div>
+  <div class="pill"><span class="coin"></span><span id="coinCount">0</span></div>
+  <button id="soundBtn" class="corner" aria-label="Sound"><span class="btn blue"><svg><use href="#i-sound"/></svg></span></button>
+</div>
+
+<div id="results" class="screen">
+  <div class="card" id="resCard">
+    <div class="trophy"><svg viewBox="0 0 24 24"><use href="#i-trophy"/></svg><span id="resBest">0</span></div>
+    <div class="won">
+      <div class="coins" id="resCoinsRow"><span class="coin"></span><span id="resCoins">0</span></div>
+      <svg id="resKey" class="keyic" viewBox="0 0 64 32"><use href="#i-key"/></svg>
+    </div>
+    <div class="row">
+      <button id="resAgain" class="btn md blue" aria-label="Play again"><svg><use href="#i-replay"/></svg></button>
+      <button id="resGo" class="btn" aria-label="Keep going"><svg><use href="#i-next"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<button id="padLeft" class="pad btn blue" aria-label="Left"><svg><use href="#i-left"/></svg></button>
+<button id="padRight" class="pad btn blue" aria-label="Right"><svg><use href="#i-right"/></svg></button>
+<button id="padDrop" class="pad btn" aria-label="Drop"><svg><use href="#i-drop"/></svg></button>
+<button id="padTurn" class="pad btn pink" aria-label="Turn"><svg><use href="#i-turn"/></svg></button>
+
+<button id="homeBtn" class="corner" aria-label="Home"><span class="btn sm blue"><svg><use href="#i-home"/></svg></span></button>
+<button id="modesBtn" class="corner" aria-label="Choose a size"><span class="btn sm blue"><svg><use href="#i-grid"/></svg></span></button>
+<div id="rotate"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg></div>
+
+<script src="logic.js"></script>
+<script src="art.js"></script>
+<script src="sound.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

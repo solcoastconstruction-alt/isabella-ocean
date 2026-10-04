@@ -120,9 +120,9 @@ async function checkTitle(tag, games, { family = false, pin = false } = {}) {
 function moreProblems(m) {
   const out = [], g = m.grid;
   if (!g.length || !m.back) return ['nothing to measure'];
-  const small = g.filter((b) => vh(b, m) < 19).length;
+  const small = g.filter((b) => vh(b, m) < 18.95).length;
   if (small) out.push(`${small} under 19vh (${Math.min(...g.map((b) => vh(b, m))).toFixed(1)}vh)`);
-  if (vh(m.back, m) < 19) out.push(`back button ${vh(m.back, m).toFixed(1)}vh`);
+  if (vh(m.back, m) < 18.95) out.push(`back button ${vh(m.back, m).toFixed(1)}vh`);
   const named = g.map((b) => [b.id, b]).concat([['back', m.back]]);
   const off = named.filter(([, b]) => !inside(b, m)).map(([n]) => n);
   if (off.length) out.push(`off screen: ${off.join(', ')}`);

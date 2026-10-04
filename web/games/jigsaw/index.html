@@ -1,0 +1,172 @@
+<!doctype html>
+<!-- Sea Jigsaw: thirty drag-and-drop jigsaw puzzles of Isabella and her sea friends (ten Easy, ten Medium, ten Hard,
+     picked by picture). Drag a piece from the tray to its place; it snaps home with a click and a sparkle. Finishing
+     gives a key, the key opens the treasure chest, and the chest bursts with coins: more of them for finishing sooner.
+     No words to read, nothing to lose.
+     Standalone page; the hub links here, and the home button / Android back button return to ../../index.html. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Sea Jigsaw</title>
+<link rel="icon" href="data:,">
+<style>
+  /* Buttons, outlines, the level select and the results card follow the main game's web/index.html, Bubble Party,
+     Coral Maze and Sea Words. */
+  :root { --gold1:#fff1a0; --gold2:#ffc21a; --gold3:#d98a00; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#1f8fc0; touch-action:none;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+    font-family: system-ui, Roboto, sans-serif; }
+  canvas#c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  .screen { position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; }
+  .screen.on { display:flex; }
+  button { font:inherit; color:inherit; border:none; padding:0; cursor:pointer; background:none; touch-action:manipulation; }
+  .btn { width:24vh; height:24vh; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 35% 28%, var(--gold1), var(--gold2) 55%, var(--gold3));
+    box-shadow:0 1.3vh 0 #a86400, 0 2.5vh 4vh rgba(0,0,0,0.3); transition:transform .08s; }
+  .btn:active { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #a86400; }
+  .btn svg { width:56%; height:56%; fill:#fff; filter:drop-shadow(0 .4vh 0 rgba(150,80,0,0.6)); }
+  .btn.md { width:19vh; height:19vh; }
+  .btn.sm { width:15vh; height:15vh; }
+  .btn.pink { background:radial-gradient(circle at 35% 28%, #ffd1ea, #ff6fb0 55%, #d63384); box-shadow:0 1.3vh 0 #9c1f5c, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.blue { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); box-shadow:0 1.3vh 0 #145f8a, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.pink svg, .btn.blue svg { filter:drop-shadow(0 .4vh 0 rgba(0,0,0,0.25)); }
+  .row { display:flex; gap:4vh; align-items:center; justify-content:center; }
+  /* Outlines are stacked drop-shadows (-webkit-text-stroke left stray lines inside letters on the Seeker). */
+  .ol-brown { filter:drop-shadow(.6vh 0 0 #b0480c) drop-shadow(-.6vh 0 0 #b0480c) drop-shadow(0 .6vh 0 #b0480c) drop-shadow(0 -.6vh 0 #b0480c) drop-shadow(0 1vh 0 rgba(120,30,0,0.35)); }
+  .ol-navy { filter:drop-shadow(.3vh 0 0 rgba(0,40,80,0.8)) drop-shadow(-.3vh 0 0 rgba(0,40,80,0.8)) drop-shadow(0 .3vh 0 rgba(0,40,80,0.8)) drop-shadow(0 -.3vh 0 rgba(0,40,80,0.8)); }
+
+  /* corner buttons: a small disc inside a full 19vh touch area, down the left edge */
+  .corner { position:fixed; left:max(1.2vh, env(safe-area-inset-left)); width:19vh; height:19vh; display:none; align-items:center; justify-content:center; z-index:10; }
+  .corner.on { display:flex; }
+  .corner .btn { pointer-events:none; }
+  .corner:active .btn { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #145f8a; }
+  #homeBtn { top:1.5vh; display:flex; }
+  #gridBtn { top:21.5vh; }
+  #eyeBtn { bottom:1.5vh; }
+  #eyeBtn.peeking .btn { box-shadow:0 0 0 .9vh rgba(255,255,255,0.95), 0 1.3vh 0 #9c1f5c; }
+  #soundBtn { bottom:1.5vh; }
+  #soundBtn .btn { width:13vh; height:13vh; }
+
+  /* level select: the name and the three sizes along the top, then ten pictures */
+  .title { position:fixed; top:.5vh; left:22vh; right:min(34vh, 18vw); height:21vh; display:flex; align-items:center; justify-content:center; gap:min(3vh, 1.6vw); pointer-events:none; }
+  .title .t1 { display:inline-block; pointer-events:auto; font-size:min(11vh, 5.2vw); font-weight:900; letter-spacing:.3vh; line-height:1.05; white-space:nowrap; margin-right:min(2vh, 1vw);
+    background:linear-gradient(180deg,#fff7b0,#ffd23f 45%,#ff9f1c); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  /* the size, in pictures: a puzzle of four pieces, of nine, of sixteen. The one in play is bright, bigger and ringed
+     in gold; the others are faded. Each is a full 19vh touch target. */
+  .mode { width:19vh; height:19vh; flex:none; display:flex; align-items:center; justify-content:center; pointer-events:auto; }
+  .mode .disc { width:15.5vh; height:15.5vh; border-radius:50%; display:flex; align-items:center; justify-content:center; box-sizing:border-box;
+    border:.6vh solid rgba(255,255,255,0.55); box-shadow:0 1vh 0 rgba(0,40,80,0.35); transition:transform .15s, filter .15s; filter:saturate(0.35) brightness(0.82); opacity:.85; }
+  .mode .disc svg { width:66%; height:66%; }
+  #mode-easy .disc { background:radial-gradient(circle at 35% 28%, #dafff5, #2ec4a6 55%, #138a74); }
+  #mode-medium .disc { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); }
+  #mode-hard .disc { background:radial-gradient(circle at 35% 28%, #f4e3ff, #b46cf0 55%, #7a2fc0); }
+  .mode.on .disc { filter:none; opacity:1; transform:scale(1.12); border-color:#fff; box-shadow:0 0 0 .8vh rgba(255,210,63,0.95), 0 1.3vh 0 rgba(0,40,80,0.45); }
+  .mode:active .disc { transform:scale(1.04) translateY(.8vh); }
+  .pill { position:fixed; top:4vh; right:max(3vh, env(safe-area-inset-right)); display:flex; align-items:center; gap:1.2vh; padding:1.4vh 3vh 1.4vh 2vh;
+    border-radius:7vh; background:rgba(255,255,255,0.92); color:#c77700; font-size:5.5vh; font-weight:900; line-height:1; box-shadow:0 1vh 0 rgba(0,40,80,0.35); pointer-events:none; }
+  .pill svg { width:6.5vh; height:6.5vh; }
+  @media (max-aspect-ratio: 18/10) { .title .t1 { font-size:min(9vh, 3.8vw); } }
+
+  /* ten pictures, five to a row, to the right of the column of round buttons; they shrink on squarer screens so the row still fits */
+  #levels { padding-left:21vh; box-sizing:border-box; }
+  #grid { --w:min(36vh, calc((100vw - 25vh) / 5.32)); display:grid; grid-template-columns:repeat(5, var(--w)); gap:calc(var(--w) * 0.075) calc(var(--w) * 0.08); margin-top:17vh; }
+  .lvl { width:var(--w); position:relative; display:flex; flex-direction:column; align-items:center; }
+  .lvl:active .pic { transform:translateY(.8vh); }
+  .lvl .pic { width:100%; height:calc(var(--w) * 0.625); border-radius:calc(var(--w) * 0.07); position:relative; overflow:hidden; box-sizing:border-box; border:.6vh solid #fff;
+    box-shadow:0 1.1vh 0 rgba(0,40,80,0.45); background:#2a6f9f; }
+  .lvl .pic canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .lvl .num { position:absolute; left:calc(var(--w) * 0.03); top:calc(var(--w) * 0.015); font-size:calc(var(--w) * 0.19); font-weight:900; color:#fff; line-height:1; }
+  .lvl .keyb { position:absolute; right:calc(var(--w) * -0.035); top:calc(var(--w) * -0.03); width:calc(var(--w) * 0.36); height:calc(var(--w) * 0.18); display:none; transform:rotate(-24deg); filter:drop-shadow(0 .5vh 0 rgba(90,50,0,0.45)); }
+  .lvl.done .keyb { display:block; }
+  .lvl .st { display:flex; gap:calc(var(--w) * 0.02); height:calc(var(--w) * 0.15); margin-top:calc(var(--w) * 0.025); align-items:center; justify-content:center; }
+  .lvl .st svg { width:calc(var(--w) * 0.15); height:calc(var(--w) * 0.15); }
+  .lvl.locked .pic { filter:grayscale(0.85) brightness(0.62); }
+  .lvl.locked .num { display:none; }
+  .lvl .lock { position:absolute; left:50%; top:50%; width:calc(var(--w) * 0.26); height:calc(var(--w) * 0.26); margin:calc(var(--w) * -0.13) 0 0 calc(var(--w) * -0.13); fill:#fff; display:none; filter:drop-shadow(0 .4vh 0 rgba(0,20,50,0.6)); }
+  .lvl.locked .lock { display:block; }
+  .lvl.shake { animation:shake .4s; }
+  .lvl.next .pic { animation:bob 1.6s ease-in-out infinite; border-color:#ffd23f; }
+  @keyframes bob { 50% { transform:translateY(-1.4vh) scale(1.03); } }
+  @keyframes shake { 20%,60% { transform:translateX(-1.5vh); } 40%,80% { transform:translateX(1.5vh); } }
+
+  /* results: what was won (the key, and each bonus coin kept), the coins counted, then where to go next */
+  #results { background:rgba(0,30,60,0.14); }
+  .card { position:fixed; left:45%; top:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,0.94); border-radius:6vh; padding:4.5vh 5vh 5vh;
+    display:flex; flex-direction:column; align-items:center; gap:3.5vh; box-shadow:0 2vh 0 rgba(0,40,80,0.3); border:.8vh solid #ffd23f; }
+  .loot { display:flex; gap:2.5vh; align-items:center; justify-content:center; min-height:17vh; }
+  .loot svg { width:17vh; height:17vh; transform:scale(0); }
+  .loot svg.keyl { width:27vh; height:13.5vh; }
+  .loot svg.pop { animation:pop .5s cubic-bezier(.3,1.8,.5,1) forwards; }
+  @keyframes pop { to { transform:scale(1); } }
+  .won { display:flex; align-items:center; gap:1.2vh; padding:1vh 3.4vh 1vh 2.2vh; border-radius:7vh; background:#fff6d0; color:#c77700; font-size:8vh; font-weight:900; line-height:1; border:.5vh solid #ffd23f; }
+  .won svg { width:9vh; height:9vh; }
+  #resNext { animation:nudge 1.8s ease-in-out 1.6s infinite; }
+  @keyframes nudge { 0%, 70%, 100% { transform:scale(1); } 80% { transform:scale(1.08); } 90% { transform:scale(0.98); } }
+
+  /* held upright? (the Android app is always landscape) */
+  #rotate { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:#1f8fc0; z-index:20; }
+  #rotate svg { width:40vw; height:40vw; fill:#fff; animation:turn 2s ease-in-out infinite; }
+  @keyframes turn { 0%,25% { transform:rotate(0); } 60%,100% { transform:rotate(-90deg); } }
+  @media (orientation: portrait) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 2.5 1.5 12H5v9h5.5v-6h3v6H19v-9h3.5z"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><path d="M12 4V0L6 6l6 6V8a6 6 0 1 1-6 6H3a9 9 0 1 0 9-10z"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M3 4v16l9-8zM12 4v16l9-8z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3.6"/><circle cx="18" cy="6" r="3.6"/><circle cx="6" cy="18" r="3.6"/><circle cx="18" cy="18" r="3.6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M12 1.5a5.5 5.5 0 0 0-5.5 5.5v3H4.5v12.5h15V10h-2V7A5.5 5.5 0 0 0 12 1.5zM9 10V7a3 3 0 0 1 6 0v3z"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zM16 7.5a6 6 0 0 1 0 9l-1.4-1.4a4 4 0 0 0 0-6.2zM18.8 4.7a10 10 0 0 1 0 14.6l-1.4-1.4a8 8 0 0 0 0-11.8z"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zM15 8.4l1.4-1.4 2.6 2.6 2.6-2.6L23 8.4l-2.6 2.6 2.6 2.6-1.4 1.4-2.6-2.6-2.6 2.6-1.4-1.4 2.6-2.6z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 3v15h10V4z"/></symbol>
+    <!-- peek: an eye -->
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M12 4.6C6.6 4.6 2.6 8.8 1 12c1.6 3.2 5.6 7.4 11 7.4S21.4 15.2 23 12c-1.6-3.2-5.6-7.4-11-7.4zm0 12.2a4.8 4.8 0 1 1 0-9.6 4.8 4.8 0 0 1 0 9.6z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 64 32"><circle cx="13" cy="16" r="11" fill="#ffc21a" stroke="#a86a00" stroke-width="2.5"/><path d="M13 21.5c-5.5-3.3-6.6-6.3-5-8.3 1.5-1.8 4-1.3 5 .5 1-1.8 3.5-2.3 5-.5 1.6 2-.5 5-5 8.3z" fill="#ff4d8d"/><rect x="22" y="12" width="38" height="8" rx="3" fill="#ffc21a" stroke="#a86a00" stroke-width="2.5"/><rect x="44" y="19" width="5" height="9" fill="#ffc21a" stroke="#a86a00" stroke-width="2"/><rect x="53" y="19" width="5" height="6" fill="#ffc21a" stroke="#a86a00" stroke-width="2"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12.8" r="10.5" fill="#c98a00"/><circle cx="12" cy="11.8" r="10.5" fill="#ffd633"/><circle cx="8.6" cy="8" r="3.4" fill="#fff6b0" opacity=".7"/><circle cx="12" cy="11.8" r="7" fill="none" stroke="#b46e00" stroke-width="1.2" opacity=".75"/><path d="M12 7.3l1.4 2.9 3.2.4-2.4 2.2.7 3.2-2.9-1.6-2.9 1.6.7-3.2-2.4-2.2 3.2-.4z" fill="#c87d00" opacity=".85"/></symbol>
+  </defs>
+</svg>
+
+<div id="levels" class="screen on">
+  <div class="title">
+    <span class="t1 ol-brown" id="title">Sea Jigsaw</span>
+    <!-- Easy: four big pieces. Medium: nine. Hard: sixteen small ones. -->
+    <button id="mode-easy" class="mode" data-mode="easy" aria-label="Easy: big pieces"><span class="disc"><svg viewBox="0 0 100 100"><g fill="#fff">
+      <rect x="6" y="6" width="41" height="41" rx="9"/><rect x="53" y="6" width="41" height="41" rx="9"/><rect x="6" y="53" width="41" height="41" rx="9"/><rect x="53" y="53" width="41" height="41" rx="9" fill="#ffd23f"/>
+      <circle cx="50" cy="26.5" r="8"/><circle cx="26.5" cy="50" r="8"/></g></svg></span></button>
+    <button id="mode-medium" class="mode" data-mode="medium" aria-label="Medium: more pieces"><span class="disc"><svg viewBox="0 0 100 100"><g fill="#fff" id="mediumTiles"></g></svg></span></button>
+    <button id="mode-hard" class="mode" data-mode="hard" aria-label="Hard: lots of small pieces"><span class="disc"><svg viewBox="0 0 100 100"><g fill="#fff" id="hardTiles"></g></svg></span></button>
+  </div>
+  <div id="grid"></div>
+  <div class="pill"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg><span id="coinCount">0</span></div>
+  <button id="soundBtn" class="corner on" aria-label="Sound"><span class="btn blue"><svg><use href="#i-sound"/></svg></span></button>
+</div>
+
+<div id="results" class="screen">
+  <div class="card" id="resCard">
+    <div class="loot" id="resLoot"></div>
+    <div class="won"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg><span id="resCoins">0</span></div>
+    <div class="row">
+      <button id="resLevels" class="btn md blue" aria-label="Puzzles"><svg><use href="#i-grid"/></svg></button>
+      <button id="resReplay" class="btn md pink" aria-label="Play again"><svg><use href="#i-replay"/></svg></button>
+      <button id="resNext" class="btn" aria-label="Next puzzle"><svg><use href="#i-next"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<button id="homeBtn" class="corner" aria-label="Home"><span class="btn sm blue"><svg><use href="#i-home"/></svg></span></button>
+<button id="gridBtn" class="corner" aria-label="Puzzles"><span class="btn sm blue"><svg><use href="#i-grid"/></svg></span></button>
+<button id="eyeBtn" class="corner" aria-label="Look at the picture"><span class="btn sm pink"><svg><use href="#i-eye"/></svg></span></button>
+<div id="rotate"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg></div>
+
+<script src="logic.js"></script>
+<script src="pictures.js"></script>
+<script src="art.js"></script>
+<script src="sound.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

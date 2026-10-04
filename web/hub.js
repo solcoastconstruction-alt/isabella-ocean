@@ -28,6 +28,9 @@
     { id: 'maze',  page: 'games/maze/index.html',  symbol: 'i-maze',   label: 'Coral Maze',   color: 'teal' },
     { id: 'match', page: 'games/match/index.html', symbol: 'i-shell',  label: 'Shell Match',  color: 'pink' },
     { id: 'words', page: 'games/words/index.html', symbol: 'i-words',  label: 'Sea Words',    color: 'purple' },
+    { id: 'blocks', page: 'games/blocks/index.html', symbol: 'i-blocks', label: 'Treasure Blocks', color: 'coral' },
+    { id: 'jigsaw', page: 'games/jigsaw/index.html', symbol: 'i-jigsaw', label: 'Sea Jigsaw', color: 'green' },
+    { id: 'dash', page: 'games/dash/index.html', symbol: 'i-dash', label: 'Splash Dash', color: 'indigo' },
   ];
 
   const ON_TITLE = 2;   // games beside the Play button; the rest go behind "+"
