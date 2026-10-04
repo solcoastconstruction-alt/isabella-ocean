@@ -90,7 +90,7 @@ window.IsabellaConfig = {
   offlineGraceHours: 24, recheckMinutes: 5,
 };
 ```
-**Script order in `web/index.html`:** flavor.js, config.js, vendor/solana.js, wallet.js, entitlement.js, payments.js, core.js, render.js, audio.js, paywall.js, app.js.
+**Script order in `web/index.html`:** flavor.js, config.js, vendor/solana.js, wallet.js, entitlement.js, payments.js, core.js, render.js, audio.js, paywall.js, hub.js, app.js.
 
 ## Pool settings (fixed at creation; fees can only rise slowly afterwards)
 | Setting | Value |

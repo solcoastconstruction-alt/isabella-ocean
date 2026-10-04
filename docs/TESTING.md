@@ -6,7 +6,7 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | Command | Checks | Last result | Port |
 |---|---|---|---|
 | `node test/verify.js` | Isabella: all 20 levels finishable; levels 1–10 byte-identical (frozen) | 20/20 | – |
-| `node test/hub/hub.test.js` | Title screen: 5 game buttons ≥19vh, fit at 800×360, each opens and comes back | 16/16 | 9454 |
+| `node test/hub/hub.test.js` | Title screen (a game, Play, a game, "+") and the more-games screen, at 915×412 and 800×360 in both flavors: buttons ≥19vh, nothing overlapping, every game opens and comes back; the two recipes in `web/hub.js` carried out on a copy | 142/142 | 9454 |
 | `node test/paywall/drive.js` | Paywall, parent gate, grown-ups screen; family baseline unchanged | 96/96 | 9450 |
 | `cd tools && npm test` | Payments: unit tests, devnet simulation, Jupiter read-only | 39 pass, 9 skipped | – |
 | `node --test test/games/match/logic.test.js` | Shell Match rules | 10/10 | – |
@@ -19,7 +19,27 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | `node test/games/words/verify.js` | Sea Words: 13,000 puzzles; placement, modes, no rude words, fresh vs seeded | 69/69 | – |
 | `node test/games/words/browser.js` | Sea Words with real touch drags in all modes | 86/86 | 9457 |
 | `node test/games/words/soak.js` | ~3 minutes of random play | pass | 9457 |
+| `node test/games/blocks/verify.js` | Treasure Blocks: shapes, turns, row clearing, coins, the fair bag, the save; model players reach the row goal in every mode on every seed (about a minute; `--quick` for a few seconds) | 118/118 | – |
+| `node test/games/blocks/browser.js` | Treasure Blocks with real touch: buttons and gestures in all three modes | 150/150 | 9484 |
+| `node test/games/blocks/soak.js` | ~3 minutes of random play | pass (on its branch) | 9484 |
+| `node test/games/blocks/mutants.js` | Breaks copies of Treasure Blocks on purpose; every defect must be caught (about 20 minutes; `--rules` for 3) | 34/34 caught (on its branch) | 9484 |
+| `node test/games/jigsaw/verify.js` | Sea Jigsaw: 30 puzzles, every cut tiles its picture, coins and bonus, saves; table, cuts and pictures frozen | 34/34 | – |
+| `node test/games/jigsaw/browser.js` | Sea Jigsaw with real touch drags in all three modes; all 30 puzzles on screen | 145/145 | 9481 |
+| `node test/games/jigsaw/soak.js` | ~3 minutes of random play | pass (on its branch) | 9481 |
+| `node test/games/jigsaw/bite.js` | Breaks copies of Sea Jigsaw on purpose (about 20 minutes; `verify` for 1) | 25/25 caught (on its branch) | 9481 |
+| `node test/games/jigsaw/sheet.js` | Saves a contact sheet of the 30 pictures and their cuts (pictures to look at, not a pass/fail test) | – | 9481 |
+| `node test/games/dash/verify.js` | Splash Dash: all 20 courses frozen, a clean line at slow and full speed, every coin reachable, a model child never bumps; the tilt maths (about a minute) | 446/446 | – |
+| `node test/games/dash/browser.js` | Splash Dash with real touch and Chrome's sensor events: steering, the speed button, bumps, leaps, the chest | 161/161 | 9482 |
+| `node test/games/dash/soak.js` | ~3 minutes of random play across all 20 courses | pass (on its branch) | 9482 |
+| `node test/games/dash/mutate.js` | Breaks copies of Splash Dash on purpose (about half an hour) | 37/37 caught (on its branch) | 9482 |
+| `node test/games/catch/verify.js` | Sea Catch: 10 levels frozen and rising, fair spacing, a bonk-free path always exists, model players reach every chest (about 40 s) | 46/46 | – |
+| `node test/games/catch/browser.js` | Sea Catch with real touch drags | 101/101 | 9483 |
+| `node test/games/catch/soak.js` | ~3 minutes of random play | pass (on its branch) | 9483 |
+| `node test/games/catch/defects.js` | Breaks copies of Sea Catch on purpose (`rules` for the quick ones) | 34/34 caught (on its branch) | 9483 |
 | `node test/e2e/emulator-flow.js` | The full parent flow on the emulator with real devnet transactions | 9/9 | 9460 |
+
+Results are from `main` on 4 Oct 2026 (app version 2.4). "On its branch" means the game's building
+agent ran it before the merge and it has not been re-run on `main`.
 
 ## End to end on the emulator
 - **Needs:** the store debug build, a fakewallet funded with ≥1.2 devnet SOL that has never bought World 2, and the app's DevTools socket forwarded to :9460 (ANDROID.md).
@@ -35,4 +55,5 @@ touch or mouse input, each on its own port. Two tests that share a port must not
   - the maze's sloppy swipes;
   - Bubble Party's drags, which caught a counting bug.
 - **Make sure the checks bite:** both game agents broke copies of their code on purpose (11 and 15 defects), and every defect was caught.
+  - The four games added on 4 Oct each keep this as a script (`mutants.js`, `bite.js`, `mutate.js`, `defects.js`): 34, 25, 37 and 34 defects, all caught.
 - **Before releasing,** run every suite on the merged `main`, not only on the agent's branch.

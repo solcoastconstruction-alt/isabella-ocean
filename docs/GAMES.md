@@ -1,7 +1,9 @@
 # The games
 
-Five ocean games share one app. Each is plain HTML5 canvas with no libraries; all the art and sound
-are made in code. The title screen ("hub", `web/index.html`) shows them as five picture buttons.
+Nine ocean games share one app. Each is plain HTML5 canvas with no libraries; all the art and sound
+are made in code. The title screen ("hub", `web/index.html`) shows three of them as picture buttons
+(Bubble Party, Isabella, Coral Maze) and a "+" button that opens a second screen with the other six.
+One list, `GAMES` in `web/hub.js`, decides which game sits where.
 
 | Game | Folder | Ages | Levels | In the store app (Isabella Ocean) | Save key | Tests |
 |---|---|---|---|---|---|---|
@@ -10,6 +12,13 @@ are made in code. The title screen ("hub", `web/index.html`) shows them as five 
 | Shell Match | `web/games/match/` | 5–8 | 6 | all free | `game.match.save` | `test/games/match/` |
 | Coral Maze | `web/games/maze/` | 5–8+ | 20 Easy + 20 Hard | all free | `isabella.maze` | `test/games/maze/` |
 | Sea Words | `web/games/words/` | 5–8 | endless (easy, medium, hard) | all free | `game.words.save` | `test/games/words/` |
+| Treasure Blocks | `web/games/blocks/` | 5–8+ | endless (Easy, Medium, Hard) | all free | `game.blocks.save` | `test/games/blocks/` |
+| Sea Jigsaw | `web/games/jigsaw/` | 3–8 | 30 (10 Easy, 10 Medium, 10 Hard) | all free | `game.jigsaw.save` | `test/games/jigsaw/` |
+| Splash Dash | `web/games/dash/` | 5–8 | 20 | all free | `game.dash.save` | `test/games/dash/` |
+| Sea Catch | `web/games/catch/` | 3–8 | 10 | all free | `game.catch.save` | `test/games/catch/` |
+
+The last four were merged on 4 Oct 2026 (app version 2.4). Their ages are estimates: no child has
+played any of the four yet, and nobody has listened to their sound.
 
 In the family app everything is unlocked. Saves go through `window.IsabellaStore`, which is Android
 SharedPreferences (file `isabella`), or `localStorage` in a browser. Sound on or off is one shared
@@ -19,6 +28,7 @@ setting, `muted` in `isabella.save`.
 - **Reading:** kids never need to read. Parent screens may use text.
 - **Touch targets:** at least ~19vh, about 2 cm on the Seeker.
 - **No dark patterns:** no timers, nagging or ads. Mistakes are gentle.
+  - **The one exception:** Sea Jigsaw gives bonus coins for finishing sooner. The owner asked for this. It only ever adds coins; nothing is lost and no puzzle can be failed.
 - **Parent gate:** anything involving money, a wallet or a link sits behind it. Hold for 3 seconds, then solve a 2-digit multiplication.
 
 ## Isabella the Mermaid (the main game)
@@ -128,20 +138,176 @@ Speed is in world units per second on a 540-tall screen: about 11 s to cross at 
   - Every line, read both ways in all 8 directions, is checked against a 148-word blocklist (ROT13-encoded in `blocklist.js`). Any hit is re-rolled.
   - The test checks 13,000 puzzles with a separate scanner.
 
+## Treasure Blocks (added 4 Oct 2026)
+- **How it plays:**
+  - Sea blocks sink into a well. Behind the well is a picture of Isabella, hidden by mist.
+  - The child slides and turns each piece as it sinks. A row filled from wall to wall sparkles away, and everything above settles down.
+  - Each row cleared pays a gold coin and clears a band of mist from the picture.
+  - Each round has a row goal. Reaching it brings a key that opens the treasure chest. "Keep going" starts the next round in the same well.
+- **Controls:**
+  - four big buttons: left, right, turn and drop. A held left or right button keeps sliding;
+  - or straight on the well: drag sideways to slide, tap to turn, pull down to drop.
+  - An outline shows where the piece will land.
+- **Modes:**
+
+  | Mode | Well | Row goal | One cell takes | Pieces | When the blocks reach the top |
+  |---|---|---|---|---|---|
+  | Easy | 6×9 | 6 | 1.0 s | 4 shapes of 1–3 blocks | a wave washes the bottom 4 rows away and play goes on |
+  | Medium | 7×11 | 8 | 0.7 s | 11 shapes of 1–4 blocks | the round ends, coins kept |
+  | Hard | 8×13 | 10 | 0.6 s, quickening to 0.22 s | 13 shapes of 1–5 blocks | the round ends, coins kept |
+
+- **Coins:** 1 for a row, 3 for two rows at once, 5 for three, 8 for four. They go into the save the moment they are earned, so leaving mid-round loses nothing.
+- **Forgiving:**
+  - Easy never ends.
+  - A landed piece waits before it settles (0.9 s on Easy, 0.45 s on Hard), so a slow finger can still slide it.
+  - Drop is ignored for a moment after a piece appears, so a double tap does not throw the next piece down.
+- **Fresh every time:** each game is dealt from a new seed through a fair bag: every shape of the mode, shuffled, and never the same shape three times running.
+- **Save:** `game.blocks.save` keeps the coins, rows cleared, games started, rounds finished per mode, the best game per mode and the last mode played. There are no levels to unlock.
+- **Proof:**
+  - `verify.js` checks the fourteen shapes, the walls and turns, the row clearing against a second model of the well, the coins, the bag and the save. Model players that only do what a finger can reach the row goal in every mode on every seed.
+  - `browser.js` plays all three modes with real touches at both screen sizes.
+  - `mutants.js` breaks copies of the game on purpose: 34 defects, all caught (run on the game's branch).
+- **Not yet watched:** no child has played it and the sound is unheard. The sink speeds are a first guess.
+
+## Sea Jigsaw (added 4 Oct 2026)
+- **How it plays:**
+  - 30 pictures, each cut into real jigsaw pieces with tabs. Pieces are never rotated.
+  - Pieces wait in a tray on the right: 3 at a time on Easy, 8 on Medium and Hard. The rest come as places free up.
+  - The child drags a piece out. Let go near its own place, it snaps home. Anywhere else on the board, it stays where it was put. Over the tray, it goes back.
+  - The last piece home sends a golden key to the treasure chest, which bursts with coins.
+- **Modes:**
+
+  | Mode | Puzzles | Pieces | The empty board shows | Base coins | Each bonus coin | Hint after |
+  |---|---|---|---|---|---|---|
+  | Easy | 10 | 4–12 (2×2 to 4×3) | a faint ghost of the picture | 5 | 1 | 12 s |
+  | Medium | 10 | 12–24 (4×3 to 6×4) | the piece outlines | 10 | 2 | 25 s |
+  | Hard | 10 | 24–40 (6×4 to 8×5) | nothing | 15 | 3 | 45 s |
+
+- **Unlocking:** each mode opens its puzzles one at a time. All three modes can be picked from the start.
+- **Coins and the speed bonus:**
+  - Finishing always gives the base coins.
+  - Three bonus coins wait on screen and drift away one at a time as the puzzle goes on. The ones still there at the end are added.
+  - The clock starts at the first touch. Bigger puzzles get longer: on the 4-piece Easy 1 the coins leave at 22, 34 and 50 s; on the 40-piece Hard 10 at 290, 450 and 650 s.
+  - This is the owner's design and the stated exception to "never for speed" (see the kid UX rules).
+- **Forgiving:**
+  - No fail state, and no piece can be lost.
+  - A generous magnetic snap, tighter on Hard.
+  - On Easy and Medium a tap on a piece lights its place. A hand shows where a piece goes after a quiet spell.
+  - A picture button shows the finished picture.
+  - Hard deals the frame pieces first, then works inward, so a piece nearly always has a neighbour.
+- **Save:** `game.jigsaw.save` keeps the coins, each mode's unlocked count and the most bonus coins kept per puzzle. A puzzle left half done is kept with its pieces and its clock.
+- **Proof:**
+  - `verify.js` checks the table (30 different pictures, piece counts rising, no piece under 19vh), that every cut tiles the picture exactly with one home per piece, the coin rules and the save. Fingerprints freeze the table, the cuts and the pictures.
+  - `browser.js` solves puzzles piece by piece with real drags and checks all 30 on screen. `sheet.js` saves a contact sheet of the pictures.
+  - `bite.js` breaks copies of the game on purpose: 25 defects, all caught (run on the game's branch).
+- **Not yet watched:** no child has played it and the sound is unheard. The bonus times are a first guess.
+
+## Splash Dash (added 4 Oct 2026)
+- **How it plays:**
+  - Isabella swims along the surface of the sea, away from the player, down a course to a finish line and a treasure chest.
+  - She always swims forward. A speed button at the side makes her go faster while it is held, up to twice her slow speed.
+  - Coins lie along a line that is always clear, so they show the safe way through.
+  - Taken fast enough, a wave ramp throws her into the air, where more coins wait.
+- **Steering:**
+  - Tilt the phone like a steering wheel. About 20° of lean is full steer, with a small dead zone.
+  - A finger held to her left or right also steers, and always works.
+  - Tilt takes over only once real, changing sensor data arrives. It lets go if the phone lies on its side for more than about a second.
+- **Courses:** 20, each a little longer than the last (about 70–92 s at slow speed, 35–47 s with the button held). Each new thing is the first thing met on its course:
+
+  | Course | New |
+  |---|---|
+  | 1 | rocks |
+  | 2 | wave ramps |
+  | 3 | kelp, which slows her without a bump |
+  | 4 | gates of two buoys |
+  | 5 | driftwood logs |
+  | 6 | lines of buoys with one way through |
+  | 7 | boats at anchor |
+  | 9 | a seagull on a raft |
+  | 11 | drifting boats |
+  | 13 | a slalom of buoys |
+  | 14 | wave lines with a swaying gap |
+  | 16 | two logs making an S-bend |
+  | 17 | boats that drift across the lane |
+
+  Later courses also have tighter gaps, a lane that wanders more and faster moving things.
+- **Forgiving:**
+  - A bump is a splash and a wobble. She drops to slow speed, may spill one coin, and swims on.
+  - Nothing ends a course but the finish line. Steering straight ahead with eyes shut still reaches the chest.
+- **Rewards:**
+  - Stars count the coins kept, never time: 3 for 80% of the coins on the water, 2 for half, 1 for finishing. The coins in the air are extra.
+  - The chest adds 10 coins.
+  - Courses open one at a time. Holding the title for 4 seconds opens them all. This is a test shortcut.
+- **Proof:**
+  - `verify.js` freezes all 20 courses by fingerprint. For each it finds a clean line at slow speed and at full speed, whenever she arrives, and shows every coin is on such a line. A model child who sees only 2 s ahead and reacts late swims every course without a bump. It also checks the tilt maths against a separate model of the phone, both landscape ways round.
+  - `browser.js` plays with real touches and real sensor events from Chrome.
+  - `mutate.js` breaks copies of the game on purpose: 37 defects, all caught (run on the game's branch).
+- **Checked on a real Seeker:** `devicemotion` fires inside the app's WebView at about 60 Hz with no permission call.
+- **Not checked on a phone:** the steer direction. The code expects left side down to steer left. If a phone steers the wrong way, flip `TILT.SIGN` in `logic.js`.
+- **Not yet watched:** no child has played it and the sound is unheard.
+
+## Sea Catch (added 4 Oct 2026)
+- **How it plays:**
+  - Sea friends drift down in bubbles. Isabella swims left and right near the sand with a big shell on her head, easing toward the finger.
+  - A friend that lands in the shell hops into the 1–10 tray. Every 10 make a gold coin.
+  - A rare golden friend is a whole coin by itself.
+  - When the level's coins are in, the treasure chest rises from the sand.
+- **Grumpy things:**
+  - From level 3: an urchin, then an old boot, an eel, a tin can and a shark.
+  - One in the shell is a gentle bonk that costs a coin, never going below 0.
+  - A grump only counts when it truly lands in the shell; friends have a much wider catch zone.
+- **Forgiving:**
+  - No timers and no lives. A missed friend costs nothing. A level cannot be failed.
+  - After a bonk she is shielded for 1.5 s, the next 3 things are all friends, and grumps come less often from then on.
+  - Two grumps close together always leave a gap to stand in, and a friend never arrives right beside a grump.
+  - A hand shows the slide to a first-time player.
+- **Stars:** 3 for no bonks, 2 for one or two, 1 for more. Never for speed.
+
+| Level | Coins | Fall speed | Things at once | Grumpy share | New |
+|---|---|---|---|---|---|
+| 1 | 2 | 78 | 2 | 0 | |
+| 2 | 3 | 86 | 2 | 0 | |
+| 3 | 4 | 95 | 3 | 12% | urchin |
+| 4 | 4 | 104 | 3 | 15% | boot |
+| 5 | 5 | 114 | 3 | 18% | eel; things drift sideways |
+| 6 | 5 | 124 | 4 | 20% | up to 2 grumps at once |
+| 7 | 6 | 135 | 4 | 22% | tin can; things zig-zag |
+| 8 | 7 | 146 | 4 | 25% | shark |
+| 9 | 8 | 158 | 5 | 27% | |
+| 10 | 10 | 170 | 5 | 30% | up to 3 grumps at once |
+
+Speed is in world units per second on a 540-tall screen: about 5 s from the top to the shell at level 1, about 2.3 s at level 10.
+
+- **Save:** `game.catch.save` keeps the unlocked level, the stars and the totals. A level left half done keeps its coins, tray and bonks.
+- **Proof:**
+  - `verify.js` freezes the level table by fingerprint and checks the spacing rules. A sweep finds a bonk-free path at a third of Isabella's speed, with every friend catchable on such a path. Model players through the real game step: a modest one wins every level with 3 stars, and a very young one who goes for everything still reaches every chest.
+  - `browser.js` plays with real touch drags at both screen sizes.
+  - `defects.js` breaks copies of the game on purpose: 34 defects, all caught (run on the game's branch).
+- **Not yet watched:** no child has played it and the sound is unheard. Watch a child play level 1 and tune the pace.
+
 ## The hub (title screen)
-- **Buttons, left to right:** Bubble Party, Isabella (big Play button), Shell Match, Coral Maze, Sea Words. The row fits an 800×360 screen.
-- **Wiring:**
-  - each button has one line in `web/app.js`, e.g. `tap('mazeBtn', () => { persist(); location.href = 'games/maze/index.html'; })`;
-  - the icons are SVG `<symbol>`s in `web/index.html`.
+- **Title screen, left to right:** Bubble Party, Isabella (the big Play button), Coral Maze, then "+".
+- **More games ("+"):** Shell Match, Sea Words, Treasure Blocks, Sea Jigsaw, Splash Dash, Sea Catch, with a back button in the corner.
+  - Buttons are pictures only, between 19vh and 30vh, in the fewest rows that give the biggest buttons.
+  - On the Seeker that is one row for up to 4 games, two rows for up to 10 and three rows for up to 18.
+- **One list drives both screens:** `GAMES` in `web/hub.js`, one line per game (`id`, `page`, `symbol`, `label`, `color`).
+  - The first two lines sit on the title, one each side of Play. Every line after those sits behind "+".
+  - Isabella is not in the list. Her Play button is written in `web/index.html` and is always the big one in the middle.
+  - The icons are SVG `<symbol>`s in `web/index.html`.
+  - `web/app.js` has one click handler for both screens; it opens the page of whichever game's button was pressed.
+- **Two recipes** (also in the comment at the top of `web/hub.js`):
+  - **Add a game:** put its `<symbol>` beside the others in `web/index.html`, then add one line to `GAMES`.
+  - **Change which two games are on the title:** move lines; the top two are on the title. Then change `ON_TITLE` in `test/hub/hub.test.js` and the family baseline in `test/paywall/drive.js` to match. Both name the title's two games on purpose, so a slip is caught.
+- **Coming back:** a game's home button loads `../../index.html`, which opens on the title, not on the more-games screen.
 - **Back button:**
   - Android back calls `window.__back()`.
   - In a mini-game that returns to the hub.
+  - On the more-games screen it returns to the title.
   - In Isabella it pauses or resumes a level, and steps back from other screens.
-- **Store app only:**
-  - "Add to Home screen" shows on the title until the app is pinned.
-  - The Grown-ups button opens the parent area.
+- **Inside the Android app, both flavors:** "Add to Home screen" shows on the title until the app is pinned.
+- **Store app only:** the Grown-ups button opens the parent area.
 
-## Adding a game (the contract the last three followed)
+## Adding a game (the contract the mini-games follow)
 1. **Files:**
    - Everything goes in `web/games/<id>/` (an `index.html` plus its JS), with tests in `test/games/<id>/`.
    - No network, no external assets, no new npm dependencies.
@@ -150,10 +316,10 @@ Speed is in world units per second on a 540-tall screen: about 11 s to cross at 
 4. **Tests:**
    - `verify.js` proves the levels (solvable, rising difficulty, fingerprints);
    - `browser.js` runs headless Chrome at 915×412 and 800×360 with real CDP touch input;
-   - `soak.js` runs ~3 minutes of random play.
+   - `soak.js` runs ~3 minutes of random play;
+   - a defect-injection script breaks copies of the game on purpose and shows the tests catch each one.
    - Use your own DevTools port (TESTING.md).
 5. **Wiring it in (coordinator):**
-   - add the hub button and symbol;
-   - add the `tap(...)` line in `app.js`;
-   - extend `test/hub/hub.test.js`;
-   - update the family baseline's expected title buttons in `test/paywall/drive.js`.
+   - put the game's picture, a `<symbol id="i-...">`, beside the others in `web/index.html` (the four newest games each supply one as `hub-symbol.svg`);
+   - add one line to `GAMES` in `web/hub.js`. A new line at the end goes behind "+";
+   - run `node test/hub/hub.test.js`. It reads the list, so it needs no change unless the title's two games change.

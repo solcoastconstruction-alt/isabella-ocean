@@ -1,7 +1,7 @@
 # Isabella Ocean
 
-**Isabella Ocean** is five ad-free ocean games for kids on the Solana Seeker, for ages about 3 to 8.
-It began as one game built for a 6-year-old. Four of the games, plus World 1 of the main game,
+**Isabella Ocean** is nine ad-free ocean games for kids on the Solana Seeker, for ages about 3 to 8.
+It began as one game built for a 6-year-old. Eight of the games, plus World 1 of the main game,
 *Isabella the Mermaid*, are free and play offline. A parent unlocks World 2 (levels 11–20) in one
 of two ways:
 
@@ -17,6 +17,8 @@ runs on devnet today (see [Status](#status)).
   <https://youtu.be/__YTxNECcDc>
 - **Website:** <https://isabellaocean-app.pages.dev>
 - **APK**, the devnet test build: <https://isabellaocean-app.pages.dev/isabella-ocean.apk>
+- **Nine games in the source, five in the APK:** the source here has nine games; the hosted test
+  APK and the demo video are the earlier five-game build.
 - **Docs:** [`docs/`](docs/README.md), one page per topic: [games](docs/GAMES.md),
   [payments](docs/PAYMENTS.md), [stake pool](docs/POOL.md), [Android](docs/ANDROID.md),
   [website](docs/SITE.md), [demo](docs/DEMO.md), [testing](docs/TESTING.md)
@@ -80,7 +82,7 @@ Pool settings: the epoch fee is 100% of rewards, an instant exit costs 0.3%, and
 deposits cost nothing. Only the manager may deposit stake accounts, which blocks reward skimming;
 SOL deposits stay open to everyone.
 
-## The five games
+## The nine games
 
 | Game | Ages | What the child does | In Isabella Ocean |
 |---|---|---|---|
@@ -89,6 +91,14 @@ SOL deposits stay open to everyone.
 | Shell Match | 5–8 | Opens shells to find the matching pairs | 6 levels, free |
 | Coral Maze | 5–8+ | Swipes Isabella through coral mazes with keys, gates, currents and patrols | 20 Easy + 20 Hard levels, free |
 | Sea Words | 5–8 | Word searches where every word comes with its picture | Endless, in 3 modes, free |
+| Treasure Blocks | 5–8+ | Slides and turns falling sea blocks to fill rows, clearing the mist from a picture of Isabella | Endless, in 3 modes, free |
+| Sea Jigsaw | 3–8 | Drags jigsaw pieces home; finishing sooner keeps up to 3 bonus coins | 30 puzzles in 3 modes, free |
+| Splash Dash | 5–8 | Tilts the phone to steer Isabella along the surface, with a button to go faster | 20 courses, free |
+| Sea Catch | 3–8 | Slides Isabella left and right to catch falling sea friends and dodge the grumps | 10 levels, free |
+
+The title screen shows three games (Bubble Party, Isabella, Coral Maze) and a "+" button; the other
+six are on the screen behind "+". The last four games were added on 4 Oct 2026 and have not been
+played by a child yet.
 
 Rules for every game: kids never need to read, touch targets are about 2 cm on the Seeker, there
 are no timers, nagging or ads, and anything involving money or a wallet sits behind the parent
@@ -166,8 +176,12 @@ and `CHROME_BIN` to your Chrome binary. Every command, its port and its last res
 | `node test/games/words/verify.js` | 13,000 Sea Words puzzles: placement, the three modes, and no rude words in any direction. |
 | `node test/games/pop/verify.js` | Bubble Party's rules, level table and old-save conversion. |
 | `node --test test/games/match/logic.test.js` | Shell Match's rules. |
-| `node test/hub/hub.test.js` | The title screen: five big buttons that fit at 800×360, each opening its game and coming back. |
-| `node test/games/maze/browser.js` (and `pop`, `words`) | Each game played in headless Chrome with real touch input. |
+| `node test/games/blocks/verify.js` | Treasure Blocks' rules in all three modes; model players reach the row goal on every seed. |
+| `node test/games/jigsaw/verify.js` | All 30 Sea Jigsaw puzzles: every cut tiles its picture exactly, and the coin rules. |
+| `node test/games/dash/verify.js` | All 20 Splash Dash courses: a clean line exists at slow and full speed, every coin is reachable, and the tilt maths. |
+| `node test/games/catch/verify.js` | All 10 Sea Catch levels: a grump can always be dodged, and no level can be failed. |
+| `node test/hub/hub.test.js` | The title screen (two games, Isabella's Play button and "+") and the more-games screen: big buttons that fit at 800×360, each opening its game and coming back. |
+| `node test/games/maze/browser.js` (and `pop`, `words`, `blocks`, `jigsaw`, `dash`, `catch`) | Each game played in headless Chrome with real touch input. |
 | `cd tools && npm ci && npm test` | Payments: offline unit tests including the entitlement rules, every flow simulated against devnet, and Jupiter ExactOut on mainnet, all read-only. Tests that send devnet transactions skip until you fund the key they print. |
 | `cd pool && npm ci && npm test` | The hand-encoded stake-pool instructions, byte for byte, and the crank's rebalancing rules. Offline. |
 | `cd pool && node status.mjs` | A read-only snapshot of the live devnet pool: fees, reserve and validators. No keys needed. |
@@ -177,7 +191,8 @@ and `CHROME_BIN` to your Chrome binary. Every command, its port and its last res
 
 ```
 web/                   the games and parent screens (HTML5 canvas, plain JS), packed into the APK
-  games/               Bubble Party, Shell Match, Coral Maze, Sea Words (Isabella is web/ itself)
+  games/               pop, match, maze, words, blocks, jigsaw, dash, catch (Isabella is web/ itself)
+  hub.js               the list of games: which two sit on the title, the rest behind "+"
   paywall.js           the parent gate, unlock and grown-ups screens
   entitlement.js       is World 2 open? Read from the chain
   payments.js          stake, exits, claim, and pay once through Jupiter
