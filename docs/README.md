@@ -5,7 +5,7 @@ launch and hackathon checklist. Both are private, so they're not in the public m
 
 | Doc | Covers |
 |---|---|
-| [GAMES.md](GAMES.md) | The four games, the title screen, kid UX rules, how to add a game |
+| [GAMES.md](GAMES.md) | The nine games, the title screen, kid UX rules, how to add a game |
 | [PAYMENTS.md](PAYMENTS.md) | Stake-to-play and pay once: screens, entitlement rules, transactions, the wallet bridge, devnet and mainnet config |
 | [POOL.md](POOL.md) | Our SPL stake pool: settings, devnet addresses, crank, commands, evidence, mainnet |
 | [ANDROID.md](ANDROID.md) | The two app flavors, building, signing, installing safely, DevTools, the emulator |

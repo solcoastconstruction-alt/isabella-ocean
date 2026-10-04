@@ -7,18 +7,17 @@ of two ways:
 
 - **Stake 1 SOL** into our own SPL stake pool. The parent keeps the OCEAN pool tokens and can take
   the SOL back any time. The pool's fee is 100% of the staking rewards; that is the price.
-- **Pay US$15 once** in any Jupiter-verified token, SKR included, swapped so that exactly 15 USDC
-  arrives.
+- **Pay US$4.99 once** in any Jupiter-verified token, SKR included, swapped so that exactly 4.99
+  USDC arrives.
 
 There are no accounts, no ads, no tracking and no backend: the unlock is read from the chain. It
 runs on devnet today (see [Status](#status)).
 
 - **Demo video** (2:48), filmed on a real Seeker with the Seed Vault Wallet on devnet:
-  <https://youtu.be/__YTxNECcDc>
+  <https://youtu.be/__YTxNECcDc>. It was filmed on an earlier build, so it shows five games and a
+  US$15 price; the app now has nine games and costs US$4.99.
 - **Website:** <https://isabellaocean-app.pages.dev>
 - **APK**, the devnet test build: <https://isabellaocean-app.pages.dev/isabella-ocean.apk>
-- **Nine games in the source, five in the APK:** the source here has nine games; the hosted test
-  APK and the demo video are the earlier five-game build.
 - **Docs:** [`docs/`](docs/README.md), one page per topic: [games](docs/GAMES.md),
   [payments](docs/PAYMENTS.md), [stake pool](docs/POOL.md), [Android](docs/ANDROID.md),
   [website](docs/SITE.md), [demo](docs/DEMO.md), [testing](docs/TESTING.md)
@@ -51,7 +50,7 @@ or on Solana:
   transaction when it is due.
 - **Jupiter ExactOut** ([`web/payments.js`](web/payments.js)). Pay once lists the Jupiter-verified
   tokens in the wallet (SKR is one) and builds a Metis Swap v1 ExactOut swap into our USDC account,
-  so exactly 15 USDC arrives. With no ExactOut route it falls back to ExactIn plus an exact USDC
+  so exactly 4.99 USDC (4,990,000 base units) arrives. With no ExactOut route it falls back to ExactIn plus an exact USDC
   transfer, in one transaction. This is the mainnet path, tested read-only against mainnet.
 - **Entitlement from the chain, no backend** ([`web/entitlement.js`](web/entitlement.js)). Staked:
   World 2 is open while the wallet holds at least 0.99 OCEAN, re-checked every 5 minutes and on
@@ -119,7 +118,7 @@ gate.
    their gold padlocks until a grown-up unlocks them.
 5. **Unlock World 2:** tap Play (if it still opens on World 1, repeat step 4) and tap a level with
    a gold padlock → Grown-ups → hold for 3 seconds, then answer a multiplication → **Stake 1 SOL**
-   or **Pay US$15 once** → approve in the wallet. To try both ways, stake first: a purchase is
+   or **Pay US$4.99 once** → approve in the wallet. To try both ways, stake first: a purchase is
    permanent.
 
 What happens next:
@@ -127,7 +126,7 @@ What happens next:
 - **Stake** deposits 1.01 SOL and mints about 1.01 OCEAN. World 2 opens once it confirms.
 - **To get the SOL back,** use the Grown-ups button on the title screen: "Get my SOL back now"
   costs 0.3%, and "free" takes about 2 days and then a Claim. Either way World 2 locks again.
-- **Pay once on devnet** sends 0.1 devnet SOL (or 15 devnet USDC) to the merchant wallet instead
+- **Pay once on devnet** sends 0.1 devnet SOL (or 4.99 devnet USDC) to the merchant wallet instead
   of swapping through Jupiter. A purchase never expires, and Restore purchase finds it after a
   reinstall.
 

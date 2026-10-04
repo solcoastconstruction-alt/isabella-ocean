@@ -685,7 +685,7 @@
       '" font-family="sans-serif" font-size="' + (text.length > 3 ? 15 : 19) + '" font-weight="700" fill="#fff" text-anchor="middle">' + text + '</text></svg>');
   }
 
-  function usdcUnits() { return BigInt(Math.round(Number(cfg.priceUsd) * 1e6)); } // USDC has 6 decimals
+  function usdcUnits() { return entitlement().priceUnits(6); } // USDC has 6 decimals; exact base units (US$4.99 -> 4990000n), the same amount the purchase check requires
   function normalizeMint(mint) { return !mint || mint === 'SOL' ? SOL_MINT : String(mint); }
   function referenceMeta(reference) { return { pubkey: new PublicKey(reference), isSigner: false, isWritable: false }; }
   /** A 0-lamport transfer to the merchant that carries the read-only reference key (Solana Pay style). */
@@ -811,7 +811,7 @@
     const mint = new PublicKey(m.usdcMint);
     const merchantAta = new PublicKey(m.usdcAta);
     const { decimals, tokenProgram } = await mintDecimals(c, mint);
-    const amount = BigInt(Math.round(Number(cfg.priceUsd) * 10 ** decimals));
+    const amount = entitlement().priceUnits(decimals);
     const source = splToken.getAssociatedTokenAddressSync(mint, owner, true, tokenProgram);
     if (!skipChecks) {
       const [bal, dest] = await Promise.all([c.getTokenAccountBalance(source, 'confirmed').catch(() => null), rpc(() => c.getAccountInfo(merchantAta, 'confirmed'), 'merchant')]);
@@ -941,7 +941,7 @@
           const res = await rpc(() => c.getParsedTokenAccountsByOwner(owner, { mint: new PublicKey(m.usdcMint) }, 'confirmed'), 'token accounts');
           const raw = res.value.reduce((a, x) => a + BigInt(x.account.data.parsed.info.tokenAmount.amount), 0n);
           list[1].balance = Number(raw) / 1e6;
-          list[1].enough = list[1].balance >= list[1].amountNeeded;
+          list[1].enough = raw >= usdcUnits();
         }
       }
       return list;
@@ -979,7 +979,8 @@
       const amountNeeded = isUsdc ? Number(cfg.priceUsd) : Math.ceil((Number(cfg.priceUsd) / t.usdPrice) * 1.01 * unit) / unit; // 1% for slippage
       const balance = Number(h.raw) / unit;
       const reserveSol = t.id === SOL_MINT ? 0.005 : 0; // fees and a possible token account
-      out.push({ mint: t.id, symbol: t.symbol, logo: logoFor(t.id, t.symbol), decimals: t.decimals, usdPrice: t.usdPrice, amountNeeded, balance, enough: balance >= amountNeeded + reserveSol });
+      const enough = isUsdc ? h.raw >= entitlement().priceUnits(t.decimals) : balance >= amountNeeded + reserveSol; // USDC is compared in base units
+      out.push({ mint: t.id, symbol: t.symbol, logo: logoFor(t.id, t.symbol), decimals: t.decimals, usdPrice: t.usdPrice, amountNeeded, balance, enough });
     }
     const rank = (x) => (x.mint === SOL_MINT ? 2 : x.mint === m.usdcMint ? 1 : 0);
     return out.sort((a, b) => (b.enough - a.enough) || (rank(b) - rank(a)) || (b.balance * b.usdPrice - a.balance * a.usdPrice));

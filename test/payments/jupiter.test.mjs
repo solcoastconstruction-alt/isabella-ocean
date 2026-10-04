@@ -1,10 +1,10 @@
 // Jupiter, READ-ONLY on mainnet (nothing is signed or sent):
-//  1. ExactOut quote SOL -> 15 USDC (Metis /swap/v1/quote).
+//  1. ExactOut quote SOL -> the price in USDC, US$4.99 = 4990000 base units (Metis /swap/v1/quote).
 //  2. IsabellaPay.buy(SOL, { dryRun:true }) composes the real payment transaction to a DUMMY merchant;
 //     decode it (lookup tables resolved from mainnet) and check its structure.
 //  3. The fallback route (Swap V2 /build ExactIn + exact USDC transfer), forced, decoded.
 //  4. Proof by simulation: the same composer with a public funded wallet as payer and its own USDC
-//     account as "merchant"; simulateTransaction (sigVerify:false) shows exactly 15 USDC arriving.
+//     account as "merchant"; simulateTransaction (sigVerify:false) shows exactly 4.99 USDC arriving.
 // Keyless api.jup.ag works at 0.5 req/s (JUP_API_KEY=... raises it). If Jupiter is unreachable, the
 // structural checks run on the recorded fixture in fixtures/jupiter-exactout.json (RECORD=1 refreshes it).
 import { test } from 'node:test';
@@ -56,6 +56,9 @@ const { cfg, Wallet, Ent, Pay } = H.loadApp({
   },
 });
 const conn = Wallet.connection();
+const PRICE_UNITS = 4990000n; // US$4.99 in USDC base units (6 decimals), written out so a drifting conversion fails here
+assert.equal(cfg.priceUsd, 4.99);
+assert.equal(Ent.priceUnits(6), PRICE_UNITS);
 
 async function decode(b64) {
   const tx = web3.VersionedTransaction.deserialize(L.Buffer.from(b64, 'base64'));
@@ -78,9 +81,9 @@ function summarize(msg) {
 function liveUnavailable(e) { return (e && e.code === 'offline') || ['JUPITER_ERROR', 'JUPITER_KEY', 'RPC_ERROR'].includes(e && e.reason) || /fetch failed|429|ENOTFOUND/.test(String(e && e.message)); }
 const pause = () => H.sleep(2200); // keyless Jupiter: 0.5 requests/s
 
-test('ExactOut quote: SOL -> exactly 15 USDC (Metis /swap/v1/quote, keyless)', async (t) => {
+test('ExactOut quote: SOL -> exactly 4.99 USDC (Metis /swap/v1/quote, keyless)', async (t) => {
   const url = cfg.jupiter.apiBase + '/swap/v1/quote?inputMint=' + SOL + '&outputMint=' + USDC +
-    '&amount=15000000&swapMode=ExactOut&slippageBps=50&restrictIntermediateTokens=true&instructionVersion=V2';
+    '&amount=' + PRICE_UNITS + '&swapMode=ExactOut&slippageBps=50&restrictIntermediateTokens=true&instructionVersion=V2';
   const headers = cfg.jupiter.apiKey ? { 'x-api-key': cfg.jupiter.apiKey } : {};
   let r;
   try { r = await fetch(url, { headers }); } catch (e) { t.skip('Jupiter unreachable: ' + e.message); return; }
@@ -88,26 +91,28 @@ test('ExactOut quote: SOL -> exactly 15 USDC (Metis /swap/v1/quote, keyless)', a
   assert.equal(r.status, 200);
   const q = await r.json();
   assert.equal(q.swapMode, 'ExactOut');
-  assert.equal(q.outAmount, '15000000');
+  assert.equal(q.outAmount, String(PRICE_UNITS));
   assert.ok(BigInt(q.otherAmountThreshold) >= BigInt(q.inAmount), 'max input includes slippage');
   const labels = q.routePlan.map((p) => p.swapInfo.label);
   assert.ok(labels.length > 0);
   // The payments doc lists Orca Whirlpool, Raydium CLMM and Raydium CPMM for ExactOut; the live API has
   // also returned PancakeSwap (CLMM) routes, so the label is reported, not asserted.
-  t.diagnostic(`quote: ${Number(q.inAmount) / 1e9} SOL (max ${Number(q.otherAmountThreshold) / 1e9}) -> 15 USDC via ${labels.join(' + ')}, impact ${q.priceImpactPct}`);
+  t.diagnostic(`quote: ${Number(q.inAmount) / 1e9} SOL (max ${Number(q.otherAmountThreshold) / 1e9}) -> 4.99 USDC via ${labels.join(' + ')}, impact ${q.priceImpactPct}`);
   await pause();
 });
 
 test('dry-run buy(SOL) composes the ExactOut payment to a dummy merchant; decoded', async (t) => {
-  let r;
+  let r, fromFixture = false;
   try { r = await Pay.buy(SOL, { dryRun: true }); } catch (e) {
     if (!liveUnavailable(e)) throw e;
+    fromFixture = true;
     const file = resolve(FIXTURES, 'jupiter-exactout.json');
     if (!existsSync(file)) throw e;
     t.diagnostic('live Jupiter unavailable (' + e.message + '); structural checks on the recorded fixture');
     r = JSON.parse(readFileSync(file, 'utf8')).result;
   }
   assert.equal(r.route, 'exactOut');
+  if (r.quote && !fromFixture) assert.equal(String(r.quote.outAmount), String(PRICE_UNITS), 'the quote is for exactly 4.99 USDC');
   assert.ok(r.size <= 1232, 'fits in a packet: ' + r.size + ' bytes');
   const { tx, msg, keys } = await decode(r.transaction);
   assert.ok(msg.payerKey.equals(dummyParent), 'fee payer = the parent');
@@ -141,21 +146,21 @@ test('dry-run buy(SOL) composes the ExactOut payment to a dummy merchant; decode
   await pause();
 });
 
-test('fallback: Swap V2 /build ExactIn into the payer\'s USDC + an exact 15 USDC transfer; decoded', async (t) => {
+test('fallback: Swap V2 /build ExactIn into the payer\'s USDC + an exact 4.99 USDC transfer; decoded', async (t) => {
   let r;
   try { r = await Pay.buy(SOL, { dryRun: true, forceRoute: 'exactIn+transfer' }); } catch (e) {
     if (liveUnavailable(e)) { t.skip('live Jupiter unavailable: ' + e.message); return; }
     throw e;
   }
   assert.equal(r.route, 'exactIn+transfer');
-  assert.ok(BigInt(r.quote.otherAmountThreshold) >= 15000000n, 'minimum output still covers 15 USDC');
+  assert.ok(BigInt(r.quote.otherAmountThreshold) >= PRICE_UNITS, 'minimum output still covers 4.99 USDC');
   assert.ok(r.size <= 1232);
   const { msg } = await decode(r.transaction);
   const last = msg.instructions[msg.instructions.length - 1];
   assert.equal(NAMES[last.programId.toBase58()], 'Token');
   const data = L.Buffer.from(last.data);
   assert.equal(data[0], 12, 'TransferChecked');
-  assert.equal(data.readBigUInt64LE(1), 15000000n, 'exactly 15 USDC');
+  assert.equal(data.readBigUInt64LE(1), PRICE_UNITS, 'exactly 4.99 USDC (4990000 base units)');
   assert.equal(data[9], 6, 'USDC decimals');
   const payerUsdc = splToken.getAssociatedTokenAddressSync(new web3.PublicKey(USDC), dummyParent, true);
   assert.ok(last.keys[0].pubkey.equals(payerUsdc) && last.keys[2].pubkey.equals(dummyAta), 'payer USDC -> merchant USDC');
@@ -190,7 +195,7 @@ async function payAs(payer, merchantWallet, merchantAta) {
   return Pay.buy(SOL, { dryRun: true });
 }
 
-test('proof by simulation: a funded payer\'s ExactOut payment delivers exactly 15 USDC (read-only)', async (t) => {
+test('proof by simulation: a funded payer\'s ExactOut payment delivers exactly 4.99 USDC (read-only)', async (t) => {
   let r;
   try { r = await payAs(FUNDED, FUNDED, FUNDED_ATA); } catch (e) {
     if (liveUnavailable(e)) { t.skip('live Jupiter/RPC unavailable: ' + e.message); return; }
@@ -199,7 +204,7 @@ test('proof by simulation: a funded payer\'s ExactOut payment delivers exactly 1
   assert.equal(r.route, 'exactOut');
   assert.equal(r.simulation.err, null, 'the composer\'s own simulation passed');
   const { delivered, units } = await simulateDelta(r.transaction, FUNDED_ATA.toBase58());
-  assert.equal(delivered, 15000000n, 'exactly 15.000000 USDC lands in the destination token account');
+  assert.equal(delivered, PRICE_UNITS, 'exactly 4.990000 USDC lands in the destination token account');
   t.diagnostic(`simulated: ${units} CU, +${Number(delivered) / 1e6} USDC at ${FUNDED_ATA.toBase58()} for ${Number(r.quote.inAmount) / 1e9} SOL (payer ${FUNDED.toBase58()}, signature-free)`);
   await pause();
 });
@@ -215,15 +220,15 @@ test('proof by simulation: a payer with no USDC account gets the route\'s token-
   }
   assert.equal(r.refundsTokenAccount, true);
   const { delivered, units, accounts } = await simulateDelta(r.transaction, FUNDED_ATA.toBase58(), [payerUsdc.toBase58()]);
-  assert.equal(delivered, 15000000n, 'exactly 15 USDC to the merchant');
+  assert.equal(delivered, PRICE_UNITS, 'exactly 4.99 USDC to the merchant');
   const after = accounts[0];
   assert.ok(after === null || (after.lamports === 0 && after.owner === '11111111111111111111111111111111'), 'the payer\'s temporary USDC account is closed again (rent refunded): ' + JSON.stringify(after));
-  t.diagnostic(`simulated: ${units} CU, +15 USDC to the merchant, payer USDC account closed in the same transaction`);
+  t.diagnostic(`simulated: ${units} CU, +4.99 USDC to the merchant, payer USDC account closed in the same transaction`);
   await pause();
 });
 
 test('purchase verifier reads real mainnet transactions (v0 with lookup tables), as refresh() will', async (t) => {
-  const saved = Object.assign({}, cfg.merchant);
+  const saved = Object.assign({}, cfg.merchant), savedPrice = cfg.priceUsd;
   try {
     // A known v0 Jupiter swap with a lookup table that credited 20.927499 USDC (2 Oct 2026), then live ones.
     const known = [{ signature: '2smpUvrmNpdCbNYbYGiCmtvj1PdNRAbj2uCe491j11cbpKzQbM3VQbcByoixz2KK1YUjmdiNdQGLijvr9WB44mxu', err: null }];
@@ -236,7 +241,7 @@ test('purchase verifier reads real mainnet transactions (v0 with lookup tables),
       for (const pb of tx.meta.postTokenBalances || []) {
         const before = pre.find((x) => x.accountIndex === pb.accountIndex);
         const delta = pb.mint === USDC ? BigInt(pb.uiTokenAmount.amount) - BigInt(before ? before.uiTokenAmount.amount : '0') : 0n;
-        if (delta < 15000000n) continue;
+        if (delta < PRICE_UNITS) continue;
         cfg.merchant.wallet = ''; // match by the token account alone
         cfg.merchant.usdcAta = keys.get(pb.accountIndex).toBase58();
         const payer = keys.get(0).toBase58(); // stands in for the reference key (any static key works)
@@ -246,13 +251,13 @@ test('purchase verifier reads real mainnet transactions (v0 with lookup tables),
         assert.equal(Ent.verifyPurchaseTransaction(tx, web3.Keypair.generate().publicKey.toBase58()), null, 'a transaction without the reference key is not a purchase');
         cfg.priceUsd = Number(delta) / 1e6 + 0.01;
         assert.equal(Ent.verifyPurchaseTransaction(tx, payer), null, 'less than the price is not a purchase');
-        cfg.priceUsd = 15;
+        cfg.priceUsd = savedPrice;
         t.diagnostic(`v0 tx ${s.signature.slice(0, 16)}… (${tx.transaction.message.addressTableLookups.length} lookup table): +${Number(delta) / 1e6} USDC recognised`);
         return;
       }
     }
-    t.skip('no v0 USDC credit >= 15 in the latest 40 Jupiter transactions');
-  } finally { Object.assign(cfg.merchant, saved); cfg.priceUsd = 15; }
+    t.skip('no v0 USDC credit >= 4.99 in the latest 40 Jupiter transactions');
+  } finally { Object.assign(cfg.merchant, saved); cfg.priceUsd = savedPrice; }
 });
 
 test('payableTokens() on mainnet: verified tokens with prices from the Tokens API', async (t) => {
@@ -267,8 +272,8 @@ test('payableTokens() on mainnet: verified tokens with prices from the Tokens AP
   const solRow = list.find((x) => x.mint === SOL);
   const usdcRow = list.find((x) => x.mint === USDC);
   assert.ok(solRow && usdcRow, 'SOL and USDC listed');
-  assert.equal(usdcRow.amountNeeded, 15);
-  assert.ok(solRow.amountNeeded > 0 && solRow.amountNeeded < 15, 'SOL amount priced: ' + solRow.amountNeeded);
+  assert.equal(usdcRow.amountNeeded, 4.99);
+  assert.ok(solRow.amountNeeded > 0 && solRow.amountNeeded < 4.99, 'SOL amount priced: ' + solRow.amountNeeded);
   for (const x of list) assert.match(x.logo, /^data:image\/svg\+xml,/, 'logos are data: URIs, never remote URLs');
   t.diagnostic(JSON.stringify(list.map((x) => ({ symbol: x.symbol, amountNeeded: x.amountNeeded, balance: x.balance, enough: x.enough }))));
 });

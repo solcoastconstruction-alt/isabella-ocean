@@ -1,5 +1,5 @@
 /* Isabella the Mermaid — the free tier and the grown-ups' screens (store flavor only).
- * World 1 (levels 1-10) is free. World 2 opens when a grown-up stakes 1 SOL or pays US$15 once,
+ * World 1 (levels 1-10) is free. World 2 opens when a grown-up stakes 1 SOL or pays US$4.99 once,
  * through window.Wallet / IsabellaPay / IsabellaEntitlement (Contract 2 in docs/kids-bundle/BUILD-PLAN.md).
  * - Kids only ever see pictures: a gold padlock, and "ask a grown-up" with a big button.
  * - Every wallet action sits behind the parent gate: hold 3 s, then a 2-digit x 1-digit multiplication.
@@ -28,7 +28,7 @@
   const W = () => window.Wallet || null;
   const canPay = () => !!(E() && Pay() && W());
   const freeLevels = () => +cfg().freeLevels || 10;
-  const priceUsd = () => +cfg().priceUsd || 15;
+  const priceUsd = () => +cfg().priceUsd || 4.99;
   const depositSol = () => +(cfg().stake && cfg().stake.depositSol) || 1.01;
   const feePct = () => { const f = cfg().stake && cfg().stake.instantFeePct; return f != null ? +f : 0.3; };
 

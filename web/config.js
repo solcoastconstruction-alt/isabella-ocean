@@ -15,7 +15,7 @@ window.IsabellaConfig = {
   chain: 'solana:devnet',
   rpcUrl: 'https://api.devnet.solana.com',
   freeLevels: 10,
-  priceUsd: 15,
+  priceUsd: 4.99, // US dollars, at most 6 decimal places; charged as exactly 4,990,000 USDC base units
   stake: {
     programId: 'DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib', // the stake-pool program that owns `pool` (devnet: SPoo1Ku8… or DPoo15wW…); empty = trust the pool account's owner
     pool: 'D5k3bxRYCWizSToy7C3WzQoPBXYNAUZ78Lo2vvFR9q7a', // stake pool account (base58)

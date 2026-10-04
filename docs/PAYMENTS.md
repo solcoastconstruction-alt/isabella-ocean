@@ -8,15 +8,15 @@ behind the parent gate:
    - While the wallet holds at least 0.99 OCEAN, World 2 is open.
    - The pool keeps 100% of the staking rewards; that is the price.
    - Exit instantly (0.3% fee), or for free in about 2 days, then claim. Either way World 2 locks again.
-2. **Pay US$15 once,** in any Jupiter-verified token.
-   - On mainnet, Jupiter swaps it so exactly 15 USDC reaches our account.
-   - On devnet, the demo sends 0.1 SOL to the merchant wallet instead.
+2. **Pay US$4.99 once,** in any Jupiter-verified token (the price was US$15 until 4 Oct 2026).
+   - On mainnet, Jupiter swaps it so exactly 4.99 USDC reaches our account.
+   - On devnet, the demo sends 0.1 SOL to the merchant wallet instead, or 4.99 devnet USDC.
    - A purchase never expires, and it can be restored after a reinstall.
 
 We never hold a parent's SOL; the pool program does, and only OCEAN holders can withdraw it.
 
 ## What the parent sees
-- **Unlock screen** (`pwPay`): Stake 1 SOL or Pay US$15 once, with the plain-English terms beside each.
+- **Unlock screen** (`pwPay`): Stake 1 SOL or Pay US$4.99 once, with the plain-English terms beside each.
   - Tokens without enough balance are greyed out.
   - Every cost is shown before the wallet opens.
 - **Grown-ups screen** (`pwManage`):
@@ -46,6 +46,8 @@ We never hold a parent's SOL; the pool program does, and only OCEAN holders can 
   - Each purchase transaction carries a reference key, `sha256("isabella-purchase-v1" + wallet)`.
   - The app finds it again with `getSignaturesForAddress`, so Restore works after a reinstall.
   - Purchases never lapse offline.
+  - **What counts as a purchase:** a finalized, successful transaction that carries the reference key and raises the merchant's USDC account by at least the price, or, on devnet only, the merchant wallet by at least `devnetPriceSol` (0.1 SOL).
+  - **Earlier purchases still count.** The test is "at least today's price", so a 15 USDC purchase made before the price fell to US$4.99 is still a purchase, and so is every 0.1 SOL devnet purchase. Raising the price later would stop smaller old purchases from counting.
 - **Family flavor:** always unlocked, and it never touches the network.
 
 ## Transactions
@@ -55,6 +57,7 @@ We never hold a parent's SOL; the pool program does, and only OCEAN holders can 
 - **Network retries:**
   - `NETWORK_RE` retries transient errors three times, including "408 Request Time-out" from the public RPC (fixed 3 Oct).
   - Program errors fail at once.
+- **The price in base units:** `priceUsd` (4.99) is turned into USDC base units by `IsabellaEntitlement.priceUnits(6)`, which reads the decimal digits and never multiplies a float: exactly 4,990,000. The ExactOut quote, the fallback transfer, the devnet USDC transfer and the purchase check all use that one function.
 - **Jupiter (mainnet):**
   - Metis Swap v1 ExactOut, with `destinationTokenAccount` set to our USDC account.
   - Without an API key the limit is 0.5 requests per second.

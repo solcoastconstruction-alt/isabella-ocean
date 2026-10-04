@@ -4,8 +4,8 @@
 | Video | Where | Status |
 |---|---|---|
 | Emulator backup (3:46, 2400×1080) | `.local/demo/isabella-ocean-demo.mp4` (a 720p copy is `isabella-ocean-demo-720p.mp4`) | Done 2 Oct |
-| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | **https://youtu.be/__YTxNECcDc** (file: `.local/demo/isabella-ocean-seeker-demo.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit unless version 2 replaces it. |
-| **Version 2 of the Seeker demo** (1:47, 1080p, narrated) | `.local/demo/isabella-ocean-seeker-demo-v2.mp4` (a 720p copy is `…-v2-preview.mp4`; `…-v2-captions.mp4` adds captions) | **Cut 3 Oct from the same take; not uploaded yet.** No rotation flips, the waits cut, no captions, and a voiceover. |
+| **The CLOCK IN demo, filmed on a real Seeker** (2:48, 1080p) | **https://youtu.be/__YTxNECcDc** (file: `.local/demo/isabella-ocean-seeker-demo.mp4`) | **Done 3 Oct.** Real Seed Vault Wallet on devnet: stake, play, instant exit, pay once. This is the video to submit unless version 2 replaces it. **It no longer matches the app:** it shows "Pay US$15 once" and the old title screen with four game buttons. |
+| **Version 2 of the Seeker demo** (1:47, 1080p, narrated) | `.local/demo/isabella-ocean-seeker-demo-v2.mp4` (a 720p copy is `…-v2-preview.mp4`; `…-v2-captions.mp4` adds captions) | **Cut 3 Oct from the same take; not uploaded yet.** No rotation flips, the waits cut, no captions, and a voiceover. **It no longer matches the app either:** same footage, and the voiceover says the old US$15 price. |
 
 **What the emulator backup shows:**
 1. title card → the three free games;
@@ -19,6 +19,10 @@ visible label, and the wallet screens are zoomed so they can be read. **One blem
 wallet's first connect screen reads "Status: Verification failed". That is its 3-second identity
 check timing out on the emulator's slow first connection; the later steps were unaffected. The
 Seeker recording, which uses the real Seed Vault Wallet, has no such issue.
+
+**Since 4 Oct 2026 the app has nine games and the one-off price is US$4.99.** Every video above was
+made before that. The captions and narration in `test/e2e/edit-seeker.js` and `edit-seeker-v2.js`
+say US$15 because the footage shows US$15; they change only with a new take.
 
 ## Recording on a real Seeker
 ```bash
@@ -81,6 +85,7 @@ then sends it 1.2 devnet SOL once.
   - staking yield of 4.8–5.5%, about 0.05 SOL a year per family;
   - 0% store commission.
 - **Version 6 (3 Oct):** five games, the Seeker proof image and the demo video link. The last slide gives the site, the code, the demo and a contact.
+- **Out of date since 4 Oct:** the deck still says five games and US$15. Its games, what's-free, pay-once and economics slides need the nine games and US$4.99 before it is exported.
 
 ## For judges trying the APK on a Seeker (draft)
 1. Install the APK. The free games and Isabella's World 1 work offline.

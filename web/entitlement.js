@@ -22,6 +22,7 @@
  * sha256("isabella-purchase-v1" + walletBase58) -> 32 bytes -> public key. refresh() finds purchases with
  * getSignaturesForAddress(reference) and accepts a finalized, successful transaction that raised the
  * merchant's USDC account by >= priceUsd, or (devnet only) the merchant wallet by >= devnetPriceSol.
+ * The test is "at least the price", so a purchase made at an earlier, higher price still counts.
  */
 (function () {
   'use strict';
@@ -126,6 +127,16 @@
     return BigInt(Math.round(Number(cfg.stake.unlockThreshold) * 10 ** decimals));
   }
 
+  /**
+   * config.priceUsd in a token's base units, exactly. The price is read as a decimal string and never
+   * multiplied as a float: 4.99 with 6 decimals is 4990000n. payments.js charges this same amount.
+   */
+  function priceUnits(decimals) {
+    const m = /^(\d+)(?:\.(\d*))?$/.exec(String(cfg.priceUsd).trim());
+    if (!m || (m[2] || '').length > decimals) return BigInt(Math.round(Number(cfg.priceUsd) * 10 ** decimals)); // exponent form, or finer than the token
+    return BigInt(m[1] + (m[2] || '').padEnd(decimals, '0'));
+  }
+
   /** Did this transaction pay the merchant enough (and carry the reference)? Returns { kind, amount } or null. */
   function verifyPurchaseTransaction(tx, referenceBase58) {
     if (!tx || !tx.meta || tx.meta.err) return null;
@@ -142,7 +153,7 @@
         if (!isMerchant) continue;
         const before = pre.find((x) => x.accountIndex === pb.accountIndex);
         const delta = BigInt(pb.uiTokenAmount.amount) - BigInt(before ? before.uiTokenAmount.amount : '0');
-        const need = BigInt(Math.round(Number(cfg.priceUsd) * 10 ** pb.uiTokenAmount.decimals));
+        const need = priceUnits(pb.uiTokenAmount.decimals);
         if (delta >= need) return { kind: 'usdc', amount: Number(delta) / 10 ** pb.uiTokenAmount.decimals };
       }
     }
@@ -305,6 +316,7 @@
     findPurchase,
     poolTokenBalance,
     verifyPurchaseTransaction,
+    priceUnits,
     STORE_KEY,
     _env: env,
   };

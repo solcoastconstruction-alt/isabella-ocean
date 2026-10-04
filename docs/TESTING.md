@@ -8,7 +8,7 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | `node test/verify.js` | Isabella: all 20 levels finishable; levels 1–10 byte-identical (frozen) | 20/20 | – |
 | `node test/hub/hub.test.js` | Title screen (a game, Play, a game, "+") and the more-games screen, at 915×412 and 800×360 in both flavors: buttons ≥19vh, nothing overlapping, every game opens and comes back; the two recipes in `web/hub.js` carried out on a copy | 142/142 | 9454 |
 | `node test/paywall/drive.js` | Paywall, parent gate, grown-ups screen; family baseline unchanged | 96/96 | 9450 |
-| `cd tools && npm test` | Payments: unit tests, devnet simulation, Jupiter read-only | 39 pass, 9 skipped | – |
+| `cd tools && npm test` | Payments: unit tests (including the price as exactly 4,990,000 USDC base units), devnet simulation, Jupiter read-only | 42 pass, 9 skipped | – |
 | `node --test test/games/match/logic.test.js` | Shell Match rules | 10/10 | – |
 | `node test/games/pop/verify.js` | Bubble Party rules, level table, old-save conversion | 25/25 | – |
 | `node test/games/pop/browser.js` | Bubble Party with real touch drags | 86/86 | 9455 |

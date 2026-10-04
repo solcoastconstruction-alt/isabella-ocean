@@ -23,7 +23,7 @@
   const cfg = window.IsabellaConfig = window.IsabellaConfig || {
     flavor: window.IsabellaFlavor || 'store',
     cluster: 'devnet', chain: 'solana:devnet', rpcUrl: 'https://api.devnet.solana.com',
-    freeLevels: 10, priceUsd: 15,
+    freeLevels: 10, priceUsd: 4.99,
     stake: { programId: '', pool: '', mint: '', depositSol: 1.01, unlockThreshold: 0.99, instantFeePct: 0.3 },
     merchant: { wallet: '', usdcMint: '', usdcAta: '' },
     jupiter: { apiBase: 'https://api.jup.ag', apiKey: '' },
@@ -48,7 +48,7 @@
     walletAvailable: true,
     publicKey: null,
     poolTokens: 0,          // on-chain: the parent's pool tokens
-    purchased: false,       // on-chain: a finalized US$15 payment with the parent's reference key
+    purchased: false,       // on-chain: a finalized US$4.99 payment with the parent's reference key
     pending: [],            // on-chain: the parent's deactivating stake accounts {stakeAccount, lamports, readyAt}
     cache: null,            // the phone's last SUCCESSFUL check {unlocked, via, wallet, checkedAt}
     lastCheckFailed: false,

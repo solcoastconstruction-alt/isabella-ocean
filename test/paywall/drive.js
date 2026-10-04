@@ -172,7 +172,7 @@ async function freeTierGateAndStake() {
   check((await on('pwPay')) && !(await on('pwGate')), `right answer (${p2.q} = ${p2.ans}) opens the paywall`);
 
   const pw = await text('#pwPayBody');
-  const need = ['Stake 1 SOL', 'get it back any time', 'Pay US$15 once', 'any token', 'staking rewards (about 5% a year)',
+  const need = ['Stake 1 SOL', 'get it back any time', 'Pay US$4.99 once', 'any token', 'staking rewards (about 5% a year)',
     "value still moves with SOL's price", 'Getting your SOL back locks World 2 again', 'Instant exit costs 0.3%', 'Free exit takes about 2 days'];
   const missing = need.filter((s) => !pw.includes(s));
   check(!missing.length, `paywall shows both options and the plain disclosures${missing.length ? `; missing: ${missing.join(' | ')}` : ''}`);
@@ -247,13 +247,13 @@ async function manageStakedAndExitNow() {
 }
 
 async function buyDisconnectRestore() {
-  console.log('\n# Pay US$15 once -> unlocked; disconnect; restore purchase');
+  console.log('\n# Pay US$4.99 once -> unlocked; disconnect; restore purchase');
   await cdp.tap(tile(11)); await cdp.tap('#pwAskGo');
   await passGate();
   await cdp.tap('#pwPay [data-act=buy]');
   await cdp.waitFor("document.querySelectorAll('#pwPay .tok').length", 5000, 'the token list');
   const toks = await ev("[...document.querySelectorAll('#pwPay .tok')].map((b) => b.textContent.trim())");
-  check(toks.length === 2 && toks[0].includes('SOL') && toks[1] === '15 USDC', `payableTokens -> pick a token (${toks.join(', ')})`);
+  check(toks.length === 2 && toks[0].includes('SOL') && toks[1] === '4.99 USDC', `payableTokens -> pick a token (${toks.join(', ')})`);
   await audit('pick a token');
   await shot('pay-pick-token');
   await cdp.tap('#pwPay [data-act=pick][data-i="1"]');

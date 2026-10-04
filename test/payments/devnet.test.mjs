@@ -173,7 +173,7 @@ test('buy(devnet USDC) with a second buyer: exact token transfer + reference', a
   }
   const merchantAta = await splToken.getOrCreateAssociatedTokenAccount(conn, payer, mint, merchant.publicKey);
   const buyerAta = await splToken.getOrCreateAssociatedTokenAccount(conn, payer, mint, buyer2.publicKey);
-  if (buyerAta.amount < 15000000n) await splToken.mintTo(conn, payer, mint, buyerAta.address, payer, 20000000n);
+  if (buyerAta.amount < 4990000n) await splToken.mintTo(conn, payer, mint, buyerAta.address, payer, 20000000n);
   if ((await conn.getBalance(buyer2.publicKey)) < 0.01e9) {
     await web3.sendAndConfirmTransaction(conn, new web3.Transaction().add(web3.SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: buyer2.publicKey, lamports: 0.02e9 })), [payer]);
   }

@@ -282,6 +282,67 @@ test('entitlement: a purchase found through the reference survives a cleared cac
   fake.signatures = [];
 });
 
+test('price: US$4.99 is exactly 4990000 USDC base units, with no floating-point drift', () => {
+  assert.equal(cfg.priceUsd, 4.99, 'web/config.js carries the price');
+  assert.equal(Ent.priceUnits(6), 4990000n);
+  assert.equal(Ent.priceUnits(9), 4990000000n);
+  assert.equal(Ent.priceUnits(2), 499n);
+  const saved = cfg.priceUsd;
+  try {
+    // every cent from 0.01 to 99.99 converts exactly, as a number or as a string
+    for (let cents = 1; cents <= 9999; cents++) {
+      cfg.priceUsd = cents / 100;
+      assert.equal(Ent.priceUnits(6), BigInt(cents) * 10000n, 'US$' + cents / 100);
+    }
+    for (const [price, units] of [[15, 15000000n], ['4.99', 4990000n], ['4.990000', 4990000n], [0.000001, 1n], ['5.', 5000000n], [1e-7, 0n]]) {
+      cfg.priceUsd = price;
+      assert.equal(Ent.priceUnits(6), units, String(price));
+    }
+  } finally { cfg.priceUsd = saved; }
+});
+
+test('purchase check: exactly the price counts, one base unit less does not, and an old US$15 purchase still counts', () => {
+  const USDC_MINT = web3.Keypair.generate().publicKey.toBase58(), ATA = web3.Keypair.generate().publicKey.toBase58();
+  const reference = Ent.referenceFor(PARENT);
+  const keys = [PARENT, ATA, reference].map((k) => new web3.PublicKey(k));
+  const paid = (units) => ({
+    blockTime: 1,
+    meta: { err: null, preBalances: [5e9, 2e6, 0], postBalances: [5e9, 2e6, 0], loadedAddresses: { writable: [], readonly: [] },
+      preTokenBalances: [{ accountIndex: 1, mint: USDC_MINT, owner: MERCHANT, uiTokenAmount: { amount: '1000000', decimals: 6 } }],
+      postTokenBalances: [{ accountIndex: 1, mint: USDC_MINT, owner: MERCHANT, uiTokenAmount: { amount: String(1000000n + units), decimals: 6 } }] },
+    transaction: { message: { getAccountKeys: () => ({ length: keys.length, get: (i) => keys[i] }) } },
+  });
+  const saved = Object.assign({}, cfg.merchant);
+  try {
+    Object.assign(cfg.merchant, { usdcMint: USDC_MINT, usdcAta: ATA });
+    assert.deepEqual(Ent.verifyPurchaseTransaction(paid(4990000n), reference), { kind: 'usdc', amount: 4.99 });
+    assert.equal(Ent.verifyPurchaseTransaction(paid(4989999n), reference), null, 'one base unit short is not a purchase');
+    assert.deepEqual(Ent.verifyPurchaseTransaction(paid(15000000n), reference), { kind: 'usdc', amount: 15 }, 'a purchase at the earlier US$15 price still counts');
+    assert.equal(Ent.verifyPurchaseTransaction(paid(4990000n), web3.Keypair.generate().publicKey.toBase58()), null, 'without the reference key it is not a purchase');
+  } finally { Object.assign(cfg.merchant, saved); }
+});
+
+test('payableTokens() on devnet asks for exactly the price in USDC and compares balances in base units', async () => {
+  const savedTokens = fake.getParsedTokenAccountsByOwner, savedBalance = fake.getBalance;
+  const holding = (units) => async () => ({ value: [{ account: { data: { parsed: { info: { tokenAmount: { amount: String(units), decimals: 6 } } } } } }] });
+  try {
+    await Wallet.connect();
+    cfg.merchant.usdcMint = MINT;
+    fake.getBalance = async () => 1e9;
+    fake.getParsedTokenAccountsByOwner = holding(4990000n);
+    let list = await Pay.payableTokens();
+    assert.equal(list[1].amountNeeded, 4.99); assert.equal(list[1].balance, 4.99); assert.equal(list[1].enough, true, 'exactly the price is enough');
+    assert.equal(list[0].amountNeeded, cfg.devnetPriceSol, 'the devnet SOL option is unchanged');
+    fake.getParsedTokenAccountsByOwner = holding(4989999n);
+    list = await Pay.payableTokens();
+    assert.equal(list[1].enough, false, 'one base unit short is not enough');
+  } finally {
+    cfg.merchant.usdcMint = '';
+    fake.getParsedTokenAccountsByOwner = savedTokens;
+    if (savedBalance) fake.getBalance = savedBalance; else delete fake.getBalance;
+  }
+});
+
 test('entitlement: a different wallet does not inherit the cache; family is always unlocked', async () => {
   fake.tokens = 2000000000n;
   await Ent.refresh();

@@ -9,7 +9,7 @@ The coordinator (main chat) owns this file and merges every branch. Each agent w
      - **Exit instantly:** WithdrawSol from the reserve, with a 0.3% fee.
      - **Exit free, ~2 days:** WithdrawStake to the parent's own stake account, deactivate, then claim.
      - The game locks again the moment the tokens leave.
-  2. **Pay US$15 once:** in any Jupiter-verified token, swapped so that exactly 15 USDC lands in the studio's USDC account (Jupiter ExactOut with a destination token account). If no ExactOut route exists, use an ExactIn swap plus an exact USDC transfer, all in one transaction.
+  2. **Pay US$4.99 once** (US$15 until 4 Oct 2026)**:** in any Jupiter-verified token, swapped so that exactly 4.99 USDC lands in the studio's USDC account (Jupiter ExactOut with a destination token account). If no ExactOut route exists, use an ExactIn swap plus an exact USDC transfer, all in one transaction.
      - **Devnet:** a direct SOL or devnet-USDC transfer stands in for Jupiter.
 - **Two Android build flavors:**
   - `family`: her current app (`app.isabella.mermaid`); everything unlocked, no wallet.
@@ -83,7 +83,7 @@ window.IsabellaEntitlement = {
 window.IsabellaConfig = {
   flavor: window.IsabellaFlavor || 'store',      // web/flavor.js sets 'store'; Android family flavor overrides with 'family'
   cluster: 'devnet', chain: 'solana:devnet', rpcUrl: 'https://api.devnet.solana.com',
-  freeLevels: 10, priceUsd: 15,
+  freeLevels: 10, priceUsd: 4.99,
   stake: { programId: '', pool: '', mint: '', depositSol: 1.01, unlockThreshold: 0.99, instantFeePct: 0.3 },
   merchant: { wallet: '', usdcMint: '', usdcAta: '' },
   jupiter: { apiBase: 'https://api.jup.ag', apiKey: '' },
