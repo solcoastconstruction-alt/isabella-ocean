@@ -31,6 +31,7 @@
     { id: 'blocks', page: 'games/blocks/index.html', symbol: 'i-blocks', label: 'Treasure Blocks', color: 'coral' },
     { id: 'jigsaw', page: 'games/jigsaw/index.html', symbol: 'i-jigsaw', label: 'Sea Jigsaw', color: 'green' },
     { id: 'dash', page: 'games/dash/index.html', symbol: 'i-dash', label: 'Splash Dash', color: 'indigo' },
+    { id: 'catch', page: 'games/catch/index.html', symbol: 'i-catch', label: 'Sea Catch', color: 'teal' },
   ];
 
   const ON_TITLE = 2;   // games beside the Play button; the rest go behind "+"

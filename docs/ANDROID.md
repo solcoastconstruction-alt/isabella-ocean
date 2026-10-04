@@ -12,7 +12,7 @@ WebView app: no framework, no androidx.
 | Distribution | installed directly | Solana dApp Store (TODO.md) |
 
 - **Java:** build with Java 17 (Homebrew `openjdk@17`). Android Studio's bundled Java is now 25, which Gradle 8.11 rejects ("Unsupported class file major version 69").
-- **Version:** 2.3 (versionCode 5), with `compileSdk`/`targetSdk` 36 and `minSdk` 26.
+- **Version:** 2.4 (versionCode 6), with `compileSdk`/`targetSdk` 36 and `minSdk` 26.
 - **Flavor assets:** `android/app/src/<flavor>/assets/flavor.js` overrides `web/flavor.js`.
 
 ## Build
