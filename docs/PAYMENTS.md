@@ -32,7 +32,8 @@ We never hold a parent's SOL; the pool program does, and only OCEAN holders can 
 | `web/entitlement.js` | Decides whether World 2 is open, and caches the answer (see the rules below). |
 | `web/payments.js` | Builds, simulates and sends transactions: stake, exitInstant, exitSlow, claim, buy, payableTokens. |
 | `web/wallet.js` | The JS side of the wallet bridge: `Wallet.connect()`, `Wallet.publicKey`, `signAndSend`. `?devwallet=1` signs with a local devnet key, for browsers. |
-| `web/config.js` | Cluster, RPC, pool and mint addresses, merchant wallet and USDC account, price, thresholds. |
+| `web/config.js` | Cluster, RPC, pool and mint addresses, merchant wallet and USDC account, price, thresholds. Devnet. |
+| `android/app/src/storeRelease/assets/config.js` | The same file for mainnet. It replaces `web/config.js` in the store release build only (see "Devnet to mainnet"). |
 | `web/vendor/solana.js` | A bundled `@solana/web3.js` and SPL token, built by `tools/bundle.mjs`. |
 | `web/paymock.js` | A mock wallet and payments, for browser tests of the paywall. |
 | `android/app/src/store/java/.../WalletBridge.java` | Mobile Wallet Adapter (MWA) on Android, exposed to the page as `window.IsabellaWallet`. |
@@ -80,7 +81,13 @@ We never hold a parent's SOL; the pool program does, and only OCEAN holders can 
   - To put Seed Vault on devnet: Settings → tap the version number about 7 times → Developer mode → Devnet.
 - **Emulator:** the full loop (stake, play, instant exit, pay once) ran with four confirmed devnet transactions (DEMO.md).
 
-## Devnet to mainnet: what changes in `web/config.js`
+## Devnet to mainnet: the store release build's own `config.js`
+- **Where (5 Oct):** `android/app/src/storeRelease/assets/config.js`. Gradle's `storeRelease` source set wins over `web/` when assets are merged, so only the store flavor's release build is on mainnet. Every debug build (the judges' APK) and the family app keep the devnet `web/config.js`.
+- **Checked by reading the built APKs (5 Oct):** store release = `mainnet-beta` and the relay, no debug pages; store debug and family release = `devnet`.
+- **Kept in step by `test/payments/mainnet-config.test.mjs`** (part of `cd tools && npm test`): the two files have the same keys; only the nine network values differ, and each of them does; the pool addresses equal `pool/mainnet.json`; the USDC account is derived from the merchant wallet. Change a price or a threshold in one file only and it fails.
+- **Values:** the relay `https://rpc.isabellaocean.app`; pool `HoG8qP3n…7Pnk` and mint `Bz3AAGDB…obabi`; merchant = the revenue wallet `4Jb1…PMHq` and its USDC account `DDD9P9ke…ZYXP` (read on chain 5 Oct: exists, owned by that wallet). **The pool is not initialized yet**, so a mainnet build shows World 2 locked and cannot stake until it is.
+
+What differs from `web/config.js`:
 - **Network:**
   - `cluster: 'mainnet-beta'`, `chain: 'solana:mainnet'`;
   - a private `rpcUrl` (the public endpoint is "not for production").

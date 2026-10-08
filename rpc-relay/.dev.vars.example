@@ -1,0 +1,4 @@
+# Copy to rpc-relay/.dev.vars for `wrangler dev` (local only; .dev.vars is gitignored).
+# The public devnet endpoint refuses requests from Workers, so local runs go through
+# tools/devnet-hop.mjs (see docs/RPC-RELAY.md, "Running it locally").
+UPSTREAM_RPC_URL=http://127.0.0.1:8899

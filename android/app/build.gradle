@@ -1,5 +1,14 @@
 plugins { id 'com.android.application' }
 
+// Owner-only pages. `-PownerPages=true` packs src/debug/assets (pool-manager.html, wallet-test.html,
+// pool-plan.js) into the store RELEASE build and lets MainActivity honour the `page` and `plan` extras
+// there, so the pool manager can sign from a release-signed build that presents the product domain
+// (wallets judge that domain; the debug build's pages.dev identity is refused on mainnet). The build
+// says so itself: versionName ends in "-owner" (pool/phone-plan.mjs accepts that in place of a debug
+// build) and scripts/sign-release.sh --owner names the APK "-owner". Never submit an owner APK:
+// sign-release.sh refuses to sign a plain release that contains the pages.
+def ownerPages = (findProperty('ownerPages') ?: 'false').toString() == 'true'
+
 android {
     namespace 'app.isabella.mermaid'
     compileSdk 36
@@ -9,6 +18,8 @@ android {
         targetSdk 36
         versionCode 7
         versionName "2.5"
+        buildConfigField 'boolean', 'OWNER_PAGES', ownerPages.toString()
+        if (ownerPages) versionNameSuffix '-owner'
     }
     buildFeatures { buildConfig true } // BuildConfig.DEBUG gates the debug-only test pages
 
@@ -29,7 +40,13 @@ android {
     // The game itself lives in ../../web and is packed as the app's assets.
     // src/<flavor>/assets/flavor.js wins over a same-named web/flavor.js: flavor source sets
     // take priority over main when assets are merged. src/debug/assets holds debug-only pages.
-    sourceSets { main { assets.srcDirs = ['../../web'] } }
+    sourceSets {
+        main { assets.srcDirs = ['../../web'] }
+        // The owner build's pages ride on the store flavor's source set (a variant-named block and the
+        // onVariants sources API both failed to reach the release asset merge, tried 7 Oct 2026). In a
+        // debug build the same files already come from src/debug, which takes priority; no clash.
+        if (ownerPages) store { assets.srcDirs += ['src/debug/assets'] }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

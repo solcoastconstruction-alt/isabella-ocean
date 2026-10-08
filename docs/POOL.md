@@ -34,7 +34,7 @@ All public addresses are in `pool/devnet.json`; the keys are in gitignored `pool
 - **Devnet quirks:**
   - legacy rent is handled with `rentMode: "meta"`;
   - devnet epochs are ~32 hours (250 ms slots).
-- **Token metadata URI:** currently `https://isabella.app/ocean-pass.json`, a domain we don't own. Point it at our site before mainnet (TODO.md).
+- **Token metadata URI:** `https://isabellaocean-app.pages.dev/ocean-pass.json` (`site/ocean-pass.json`, a copy of `pool/metadata/ocean-pass.json`; its image is the site's `icon.png`). This is `create-pool.mjs`'s default since 5 Oct. The devnet token still carries the old placeholder `https://isabella.app/ocean-pass.json`, a domain we don't own; that is harmless on devnet.
 
 ## Crank rules (`pool/crank.mjs`)
 - After each epoch boundary the pool needs the permissionless update. The app also prepends it to any parent transaction.
@@ -62,6 +62,12 @@ All public addresses are in `pool/devnet.json`; the keys are in gitignored `pool
   - The instant exit charged 0.3%; the free exit and the 100%-fee reserve test landed; fees were collected.
 - **3 Oct, primary-exit check phase 2: passed.** The free exit came from active stake (1.0086 SOL, `source: active`).
   - The exit stake account `GHeb75yraqDXnXMw1UpSAZBpdECjDc9ia9SNksmHxrut` can be withdrawn from epoch 1174 (~4 Oct 00:30 UTC). Claim it then (TODO.md).
+
+## Phone manager (decided 5 Oct 2026)
+- **The mainnet manager will be an account in the owner's phone wallet,** not a Squads multisig, and the manager fee account will belong to a second account, his revenue wallet (`create-pool.mjs --manager … --fee-owner …`).
+- **Who signs:** the manager signs `Initialize` and the three settings. The revenue wallet alone signs fee collections; the manager is not needed and cannot do it.
+- **How:** the scripts write a plan file (`--plan-out`), `pool/phone-plan.mjs push` hands it to `pool-manager.html`, a page in the store app's debug build, and the wallet on the phone signs. `pool/README.md` "Phone manager" has the rules, the steps and the references.
+- **Rehearsed on devnet on 5 Oct** with the emulator and the test wallet, on a separate pool (`pool/devnet-phone-rehearsal.json`, `AdqDPgeuvk3Zu4o7QwxLtsWjSJiMAryji5pfgeYD9Qck`): create, settings, and one fee collection.
 
 ## Mainnet
 The owner creates the mainnet pool with **his own keys**, by the runbook in `pool/README.md` (about 2 SOL

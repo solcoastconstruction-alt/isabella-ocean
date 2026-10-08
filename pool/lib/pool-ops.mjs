@@ -53,6 +53,7 @@ export function calcLamportsWithdrawAmount(pool, poolTokens) {
   return num / den;
 }
 export function lamportsPerPoolToken(pool) { // rounded up, per smallest token unit
+  if (pool.poolTokenSupply === 0n) return 1n; // a pool that is initialized but not yet seeded: tokens are minted 1:1
   return (pool.totalLamports + pool.poolTokenSupply - 1n) / pool.poolTokenSupply;
 }
 export function solPerToken(pool) {

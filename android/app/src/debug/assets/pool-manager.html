@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pool manager</title>
+<!-- Debug builds only (src/debug/assets); release builds do not pack this page and ignore the extras.
+     Signs the stake pool's manager steps (or a fee collection) with the wallet on this phone, through the
+     app's own wallet bridge (window.IsabellaWallet, web/wallet.js). See pool/README.md "Phone manager".
+
+     Open it from the Mac, which sends the plan file's bytes along:
+       cd pool && node phone-plan.mjs push <plan.json> --serial <adb serial>
+     (that runs: adb -s <serial> shell am start -n <package>/app.isabella.mermaid.MainActivity
+                 --es page pool-manager.html --es plan <the plan, base64url>)
+
+     Rules this page keeps:
+       * The cluster comes from the plan file, never from a default, and is the big label at the top.
+       * A mainnet plan needs POOL_ALLOW_MAINNET=yes on the Mac AND the word MAINNET typed here.
+       * Every instruction is shown in plain words before the wallet can open. An instruction this page
+         cannot decode byte for byte blocks the whole plan.
+       * Each step is simulated first. Initialize goes alone and first; afterwards the pool's manager is
+         read from the chain and must be the connected account before anything else may be signed. -->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b2230; color: #eaf6ff; font: 15px/1.4 system-ui, sans-serif; }
+  #banner { position: sticky; top: 0; z-index: 5; padding: 6px 16px 8px; background: #3a4750; border-bottom: 3px solid #0006; }
+  #banner.devnet { background: #0d6b52; }
+  #banner.mainnet { background: #b3261e; }
+  #cluster { font: 800 44px/1 system-ui, sans-serif; letter-spacing: 2px; }
+  #cluster-note { font-size: 14px; margin-top: 2px; }
+  #fp { float: right; text-align: right; font: 600 15px/1.25 ui-monospace, monospace; }
+  #fp small { display: block; font: 12px system-ui, sans-serif; opacity: .85; }
+  main { padding: 10px 16px 60px; }
+  h2 { font-size: 17px; margin: 18px 0 6px; }
+  .card { background: #10334a; border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+  .card.bad { background: #5a1a16; }
+  .card.done { background: #0f4a3b; }
+  .mono, .addr { font: 13px/1.35 ui-monospace, monospace; word-break: break-all; }
+  .ix { border-left: 4px solid #ffd166; padding: 2px 0 2px 10px; margin: 10px 0; }
+  .ix h3 { font-size: 16px; margin: 0 0 2px; }
+  .muted { color: #a9c9dc; font-size: 13px; }
+  table { border-collapse: collapse; margin: 4px 0; }
+  td { padding: 1px 10px 1px 0; vertical-align: top; }
+  td.k { color: #a9c9dc; white-space: nowrap; }
+  td.v { font-weight: 700; word-break: break-word; }
+  ul.accts { list-style: none; margin: 4px 0 0; padding: 0; }
+  ul.accts li { margin: 2px 0; }
+  .tag { display: inline-block; font: 700 11px system-ui, sans-serif; padding: 1px 6px; border-radius: 9px; margin-left: 6px; background: #35607a; }
+  .tag.s { background: #ffd166; color: #222; }
+  .tag.w { background: #6aa9cf; color: #06202f; }
+  .tag.you { background: #7be0b6; color: #06202f; }
+  button { font: 700 16px system-ui, sans-serif; padding: 12px 16px; border: 0; border-radius: 8px; background: #ffd166; color: #222; margin: 6px 8px 6px 0; }
+  button.alt { background: #9ad1f5; }
+  button:disabled { background: #49616f; color: #9db3c0; }
+  input[type=text], textarea { font: 16px ui-monospace, monospace; padding: 8px; border-radius: 6px; border: 2px solid #9ad1f5; background: #06202f; color: #fff; }
+  textarea { width: 100%; height: 110px; }
+  .err { color: #ffb4a9; font-weight: 700; }
+  .ok { color: #8ff0c4; font-weight: 700; }
+  #log { font: 12px/1.35 ui-monospace, monospace; color: #b9dcf2; white-space: pre-wrap; word-break: break-all; }
+  .state { white-space: pre-wrap; word-break: break-word; }
+</style>
+<script src="vendor/solana.js"></script>
+<script src="pool-plan.js"></script>
+</head>
+<body>
+<div id="banner">
+  <div id="fp"></div>
+  <div id="cluster">NO PLAN</div>
+  <div id="cluster-note">Pool manager signing page (debug builds only)</div>
+</div>
+<main>
+  <div id="problems"></div>
+  <div id="summary"></div>
+  <div id="gate"></div>
+  <div id="walletBox"></div>
+  <div id="steps"></div>
+  <details id="pasteBox">
+    <summary>No plan here, or the wrong one? Paste a plan file</summary>
+    <p class="muted">Sending it from the Mac (<span class="mono">node phone-plan.mjs push</span>) is safer than pasting: nothing can be cut off.</p>
+    <textarea id="paste" spellcheck="false" autocomplete="off"></textarea>
+    <button class="alt" id="b-paste">Load the pasted plan</button>
+  </details>
+  <h2>Log</h2>
+  <div id="log"></div>
+</main>
+<script>
+'use strict';
+(function () {
+  const P = window.PoolPlan, L = window.SolanaLib, W3 = L.web3;
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Everything a test (or a person with DevTools) needs to follow along.
+  const PM = (window.PM = {
+    status: 'loading', plan: null, check: null, fingerprint: null, cluster: null,
+    connected: null, mainnetConfirmed: false, genesisOk: null, stopped: null,
+    steps: [], // { state: 'waiting'|'simulated'|'signing'|'sent'|'done'|'failed'|'already', simulation, signature, error, guard }
+  });
+
+  function log() {
+    const line = new Date().toISOString().slice(11, 19) + ' ' + Array.from(arguments).map((p) => (typeof p === 'string' ? p : JSON.stringify(p))).join(' ');
+    $('log').textContent = line + '\n' + $('log').textContent;
+    console.log('[pool-manager] ' + line);
+  }
+
+  // ---------------------------------------------------------------- load the plan
+  function loadBytes(bytes, how) {
+    PM.plan = null; PM.check = null; PM.steps = []; PM.connected = null; PM.stopped = null; PM.genesisOk = null; PM.mainnetConfirmed = false;
+    let plan = null, problem = null;
+    try { plan = JSON.parse(P.utf8Decode(bytes)); } catch (e) { problem = 'The plan is not readable JSON: ' + e.message; }
+    PM.fingerprint = P.fingerprint(L.sha256(bytes));
+    PM.plan = plan;
+    PM.check = plan ? P.checkPlan(plan) : { ok: false, errors: [problem], warnings: [], steps: [], cluster: null, clusterInfo: null, signer: null };
+    PM.cluster = PM.check.cluster;
+    PM.steps = PM.check.steps.map(() => ({ state: 'waiting' }));
+    log('plan loaded (' + how + '): ' + bytes.length + ' bytes, fingerprint ' + PM.fingerprint + ', cluster ' + (PM.cluster || 'unknown') + ', ' + (PM.check.ok ? 'checks passed' : PM.check.errors.length + ' problem(s)'));
+    PM.status = PM.check.ok ? 'ready' : 'blocked';
+    render();
+    if (PM.check.ok) loadWallet();
+  }
+
+  function fromFragment() {
+    const m = /[#&]plan=([A-Za-z0-9_-]+)/.exec(window.location.hash || '');
+    if (!m) { PM.status = 'no-plan'; render(); log('no plan in the page address'); return; }
+    let bytes;
+    try { bytes = P.b64urlDecode(m[1]); } catch (e) { PM.status = 'no-plan'; render(); log('the plan in the page address is not base64url'); return; }
+    loadBytes(bytes, 'sent from the Mac');
+  }
+  // A second `push` while this page is open only changes the fragment: start again from scratch.
+  window.addEventListener('hashchange', () => window.location.reload());
+
+  // ---------------------------------------------------------------- the wallet (web/wallet.js over the app's bridge)
+  let walletReady = null;
+  function loadWallet() {
+    if (walletReady) return walletReady;
+    const info = PM.check.clusterInfo;
+    // wallet.js reads its chain and RPC once, when it loads: give it the plan's, not the game's config.js.
+    window.IsabellaConfig = { cluster: PM.cluster === 'mainnet' ? 'mainnet-beta' : 'devnet', chain: info.chain, rpcUrl: PM.plan.rpcUrl };
+    walletReady = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'wallet.js';
+      s.onload = () => { log('wallet bridge ready on ' + window.Wallet.chain + (window.IsabellaWallet ? '' : ' (no Android bridge here)')); resolve(window.Wallet); render(); };
+      s.onerror = () => reject(new Error('wallet.js did not load'));
+      document.head.appendChild(s);
+    });
+    return walletReady;
+  }
+
+  let conn = null;
+  function connection() {
+    if (!conn) conn = new W3.Connection(PM.plan.rpcUrl, { commitment: 'confirmed', disableRetryOnRateLimit: true });
+    return conn;
+  }
+  const NETWORK_RE = /fetch failed|failed to fetch|network|timed?[ -]?out|socket|\b(408|429|502|503|504)\b/i; // the public RPC answers 408 under load
+  async function rpc(fn, what) {
+    let last;
+    for (let i = 0; i < 5; i++) {
+      try { return await fn(); } catch (e) {
+        last = e;
+        if (!NETWORK_RE.test(String(e && e.message))) break;
+        log('RPC ' + what + ' failed (' + String(e.message).slice(0, 80) + '); trying again');
+        await sleep(1200 * (i + 1));
+      }
+    }
+    throw new Error('RPC ' + what + ': ' + (last && last.message));
+  }
+
+  function canAct() {
+    return PM.check && PM.check.ok && !PM.stopped && (PM.cluster !== 'mainnet' || PM.mainnetConfirmed);
+  }
+
+  async function connect() {
+    if (!canAct()) return;
+    PM.status = 'connecting'; render();
+    try {
+      const wallet = await loadWallet();
+      // The RPC must really be the plan's cluster before anything is built against it.
+      const genesis = await rpc(() => connection().getGenesisHash(), 'genesis hash');
+      PM.genesisOk = genesis === PM.check.clusterInfo.genesisHash;
+      if (!PM.genesisOk) throw new Error('The RPC in the plan is not ' + PM.check.clusterInfo.label + ' (genesis ' + genesis + ').');
+      const key = await wallet.connect();
+      PM.connected = key;
+      PM.walletLabel = wallet.walletLabel || '';
+      log('connected ' + key + ' on ' + wallet.chain);
+      if (key === PM.check.signer) {
+        try { PM.balance = await rpc(() => connection().getBalance(new W3.PublicKey(key), 'confirmed'), 'balance'); } catch (e) { PM.balance = null; }
+      }
+      PM.status = key === PM.check.signer ? 'connected' : 'wrong-account';
+    } catch (e) {
+      PM.status = 'connect-failed';
+      PM.connectError = (e && e.message) || String(e);
+      log('connect failed: ' + PM.connectError);
+    }
+    render();
+  }
+
+  function disconnect() {
+    if (window.Wallet) window.Wallet.disconnect();
+    PM.connected = null; PM.status = PM.check && PM.check.ok ? 'ready' : PM.status;
+    log('disconnected: the saved wallet authorization for this cluster is forgotten');
+    render();
+  }
+
+  // ---------------------------------------------------------------- one step: guard, simulate, sign, confirm, verify
+  function buildTx(stepIndex, blockhash, lastValidBlockHeight) {
+    const payer = new W3.PublicKey(PM.check.signer);
+    const tx = new W3.Transaction({ feePayer: payer, blockhash, lastValidBlockHeight });
+    for (const ix of PM.plan.steps[stepIndex].instructions) {
+      tx.add(new W3.TransactionInstruction({
+        programId: new W3.PublicKey(ix.programId),
+        keys: ix.accounts.map((a) => ({ pubkey: new W3.PublicKey(a.pubkey), isSigner: a.isSigner, isWritable: a.isWritable })),
+        data: L.Buffer.from(P.hexToBytes(ix.dataHex)),
+      }));
+    }
+    return tx;
+  }
+
+  async function poolHead(address) {
+    const ai = await rpc(() => connection().getAccountInfo(new W3.PublicKey(address), 'confirmed'), 'pool account');
+    if (!ai) return { missing: true };
+    const head = P.readPoolHead(ai.data);
+    head.owner = ai.owner.toBase58();
+    return head;
+  }
+
+  /** What the chain says about this step's pool, and whether the step may go ahead. */
+  async function guard(stepIndex) {
+    const s = PM.check.steps[stepIndex], me = PM.connected, program = PM.check.clusterInfo.stakePoolProgram;
+    if (!s.initialize && !s.managerSigned) return { ok: true, text: 'This step does not need the pool manager.' };
+    const pool = s.pools[0];
+    const head = await poolHead(pool);
+    if (head.missing) return { ok: false, text: 'The pool account ' + pool + ' does not exist on ' + PM.check.clusterInfo.label + '. Run create-pool.mjs phase 1 first.' };
+    if (head.owner !== program) return { ok: false, stop: true, text: 'The pool account is not owned by the stake-pool program.' };
+    if (s.initialize) {
+      if (head.accountType === 0) return { ok: true, text: 'The pool account is empty and waiting for Initialize.' };
+      if (head.accountType === 1 && head.manager === me && head.managerFeeAccount === s.initialize.managerFeeAccount) {
+        return { ok: true, already: true, text: 'This pool is already initialized with you as its manager. Nothing to sign for this step.' };
+      }
+      return { ok: false, stop: true, text: 'STOP. This pool account was already initialized by someone else (manager ' + head.manager + '). Abandon it: make new account keys and start again.' };
+    }
+    if (head.accountType !== 1) return { ok: false, text: 'The pool is not initialized yet. Do the Initialize step first.' };
+    if (head.manager !== me) return { ok: false, stop: true, text: 'STOP. The pool’s manager on chain is ' + head.manager + ', not the connected account. Sign nothing else. If you did not set that manager, abandon this pool.' };
+    return { ok: true, text: 'Checked on chain: the pool’s manager is the connected account.' };
+  }
+
+  function stopAll(text) { PM.stopped = text; log('STOPPED: ' + text); }
+
+  async function simulate(i) {
+    const st = PM.steps[i];
+    if (!canAct() || PM.status !== 'connected') return;
+    if (PM.steps.slice(0, i).some((p) => p.state !== 'done' && p.state !== 'already')) return;
+    st.state = 'checking'; st.error = null; st.simulation = null; render();
+    try {
+      st.guard = await guard(i);
+      log('step ' + (i + 1) + ' chain check: ' + st.guard.text);
+      if (st.guard.stop) stopAll(st.guard.text);
+      if (!st.guard.ok) { st.state = 'failed'; st.error = st.guard.text; render(); return; }
+      if (st.guard.already) { st.state = 'already'; render(); return; }
+      const { blockhash, lastValidBlockHeight } = await rpc(() => connection().getLatestBlockhash('confirmed'), 'blockhash');
+      const tx = buildTx(i, blockhash, lastValidBlockHeight);
+      const sim = await rpc(() => connection().simulateTransaction(new W3.VersionedTransaction(tx.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' }), 'simulate');
+      const v = sim.value;
+      st.simulation = { ok: !v.err, err: v.err || null, units: v.unitsConsumed || null, logs: (v.logs || []).slice(-8) };
+      log('step ' + (i + 1) + ' simulation: ' + (v.err ? 'FAILED ' + JSON.stringify(v.err) : 'ok, ' + v.unitsConsumed + ' compute units'));
+      st.state = v.err ? 'failed' : 'simulated';
+      if (v.err) st.error = 'The simulation failed, so the wallet was not opened: ' + JSON.stringify(v.err);
+    } catch (e) {
+      st.state = 'failed'; st.error = (e && e.message) || String(e);
+      log('step ' + (i + 1) + ' check failed: ' + st.error);
+    }
+    render();
+  }
+
+  async function confirm(signature, lastValidBlockHeight) {
+    for (let i = 0; i < 150; i++) {
+      let s = null;
+      try { s = (await connection().getSignatureStatuses([signature], { searchTransactionHistory: i % 10 === 9 })).value[0]; } catch (e) { /* keep polling */ }
+      if (s && s.err) return { ok: false, err: s.err };
+      if (s && (s.confirmationStatus === 'confirmed' || s.confirmationStatus === 'finalized')) return { ok: true, status: s.confirmationStatus };
+      if (i % 10 === 9) {
+        const height = await connection().getBlockHeight('confirmed').catch(() => 0);
+        if (height > lastValidBlockHeight + 20) return { ok: false, expired: true };
+      }
+      await sleep(1000);
+    }
+    return { ok: false, timeout: true };
+  }
+
+  async function sign(i) {
+    const st = PM.steps[i];
+    if (!canAct() || PM.status !== 'connected' || st.state !== 'simulated') return;
+    st.state = 'signing'; st.error = null; render();
+    try {
+      // Read the chain again right before the wallet opens: the answer must still be the same.
+      const g = await guard(i);
+      if (g.stop) stopAll(g.text);
+      if (!g.ok || g.already) { st.state = g.already ? 'already' : 'failed'; st.error = g.already ? null : g.text; st.guard = g; render(); return; }
+      const { blockhash, lastValidBlockHeight } = await rpc(() => connection().getLatestBlockhash('confirmed'), 'blockhash');
+      const tx = buildTx(i, blockhash, lastValidBlockHeight);
+      log('step ' + (i + 1) + ': asking the wallet to sign and send');
+      const sigs = await window.Wallet.signAndSend([tx]);
+      st.signature = sigs[0];
+      st.state = 'sent'; render();
+      log('step ' + (i + 1) + ' signature ' + st.signature);
+      const c = await confirm(st.signature, lastValidBlockHeight);
+      if (!c.ok) {
+        st.state = 'failed';
+        st.error = c.err ? 'The transaction failed on chain: ' + JSON.stringify(c.err)
+          : 'The transaction was not confirmed in time. Look it up before trying again: it may still have landed.';
+        log('step ' + (i + 1) + ': ' + st.error);
+        render();
+        return;
+      }
+      log('step ' + (i + 1) + ' ' + c.status);
+      // After Initialize, and after any manager step: what does the chain say now?
+      const s = PM.check.steps[i];
+      if (s.initialize) {
+        const head = await poolHead(s.initialize.pool);
+        const good = head.accountType === 1 && head.manager === PM.connected && head.managerFeeAccount === s.initialize.managerFeeAccount && head.staker === s.initialize.staker;
+        st.verified = good
+          ? 'Checked on chain: the pool is initialized, its manager is the connected account, its fee account is ' + head.managerFeeAccount + '.'
+          : 'STOP. After Initialize the pool’s manager on chain is ' + head.manager + ' and its fee account ' + head.managerFeeAccount + ', not what this plan set. Sign nothing else and abandon this pool.';
+        log('step ' + (i + 1) + ' verification: ' + st.verified);
+        if (!good) { stopAll(st.verified); st.state = 'failed'; st.error = st.verified; render(); return; }
+      }
+      st.state = 'done';
+      if (PM.steps.every((p) => p.state === 'done' || p.state === 'already')) { PM.status = 'connected'; PM.finished = true; log('all steps are done'); }
+    } catch (e) {
+      st.state = 'failed';
+      st.error = ((e && e.message) || String(e)) + (e && e.maybeSubmitted ? ' The transaction may still have landed: check the chain (re-run the script on the Mac) before signing again.' : '');
+      if (e && e.reason) st.reason = e.reason;
+      log('step ' + (i + 1) + ' not sent: ' + st.error);
+    }
+    render();
+  }
+
+  // ---------------------------------------------------------------- drawing
+  function explorer(sig) { return 'https://explorer.solana.com/tx/' + sig + PM.check.clusterInfo.explorerSuffix; }
+
+  function drawInstruction(d, n) {
+    const box = el('div', 'ix');
+    box.appendChild(el('h3', null, n + '. ' + (d.name || 'NOT DECODED')));
+    const prog = el('div', 'muted');
+    prog.appendChild(document.createTextNode('Program: '));
+    prog.appendChild(el('span', 'addr', d.program));
+    prog.appendChild(document.createTextNode(d.programName ? '  (' + d.programName + ')' : '  (UNKNOWN PROGRAM)'));
+    box.appendChild(prog);
+    if (d.params.length) {
+      const t = el('table');
+      d.params.forEach((p) => { const tr = el('tr'); tr.appendChild(el('td', 'k', p[0])); tr.appendChild(el('td', 'v', p[1])); t.appendChild(tr); });
+      box.appendChild(t);
+    }
+    const ul = el('ul', 'accts');
+    d.accounts.forEach((a) => {
+      const li = el('li');
+      li.appendChild(el('span', 'muted', a.role + ': '));
+      li.appendChild(el('span', 'addr', a.pubkey));
+      if (a.isSigner) li.appendChild(el('span', 'tag s', 'SIGNER'));
+      if (a.isWritable) li.appendChild(el('span', 'tag w', 'WRITABLE'));
+      if (a.pubkey === PM.check.signer) li.appendChild(el('span', 'tag you', 'this plan’s account'));
+      if (a.known) li.appendChild(el('span', 'tag', a.known));
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    if (d.label) box.appendChild(el('div', 'muted', 'Label in the file: ' + d.label));
+    d.problems.forEach((p) => box.appendChild(el('div', 'err', p)));
+    if (!d.decoded) box.appendChild(el('div', 'mono muted', 'data ' + d.dataHex));
+    return box;
+  }
+
+  function button(id, text, onClick, enabled, cls) {
+    const b = el('button', cls || null, text);
+    b.id = id; b.disabled = !enabled;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function render() {
+    const c = PM.check, banner = $('banner');
+    banner.className = PM.cluster || '';
+    $('cluster').textContent = c && c.clusterInfo ? c.clusterInfo.label : 'NO PLAN';
+    $('cluster-note').textContent = !c ? 'Pool manager signing page (debug builds only). Send a plan from the Mac.'
+      : PM.cluster === 'mainnet' ? 'REAL MONEY. Every signature on this page is a real mainnet transaction.'
+      : PM.cluster === 'devnet' ? 'Test network. Nothing here has any value.'
+      : 'This plan does not say which network it is for.';
+    $('fp').textContent = '';
+    if (PM.fingerprint) { $('fp').appendChild(el('small', null, 'plan fingerprint (must match the Mac)')); $('fp').appendChild(document.createTextNode(PM.fingerprint)); }
+
+    const problems = $('problems'); problems.textContent = '';
+    if (PM.stopped) { const b = el('div', 'card bad'); b.appendChild(el('div', 'err', PM.stopped)); problems.appendChild(b); }
+    if (c && c.errors.length) {
+      const b = el('div', 'card bad');
+      b.appendChild(el('div', 'err', 'This plan cannot be signed:'));
+      c.errors.forEach((e) => b.appendChild(el('div', null, '• ' + e)));
+      problems.appendChild(b);
+    }
+
+    const summary = $('summary'); summary.textContent = '';
+    if (c && c.steps.length) {
+      const total = c.steps.reduce((n, s) => n + s.instructions.length, 0);
+      summary.appendChild(el('h2', null, 'What this plan does: ' + total + ' instruction' + (total === 1 ? '' : 's') + ' in ' + c.steps.length + ' transaction' + (c.steps.length === 1 ? '' : 's')));
+      const who = el('div', 'card');
+      who.appendChild(el('div', 'muted', 'Signs and pays the network fee for every transaction:'));
+      who.appendChild(el('div', 'addr', c.signer || '(not named)'));
+      if (PM.plan && PM.plan.note) who.appendChild(el('div', 'muted', 'Note in the file: ' + PM.plan.note));
+      if (PM.plan && PM.plan.createdAt) who.appendChild(el('div', 'muted', 'Made ' + PM.plan.createdAt + (PM.plan.kind ? ' by ' + PM.plan.kind : '')));
+      summary.appendChild(who);
+      c.steps.forEach((s, si) => {
+        const card = el('div', 'card');
+        card.appendChild(el('div', null, 'Transaction ' + (si + 1) + ' of ' + c.steps.length + ': ' + s.title));
+        s.instructions.forEach((d, ii) => card.appendChild(drawInstruction(d, (si + 1) + '.' + (ii + 1))));
+        summary.appendChild(card);
+      });
+    }
+
+    const gate = $('gate'); gate.textContent = '';
+    if (c && c.ok && PM.cluster === 'mainnet') {
+      const card = el('div', 'card bad');
+      card.appendChild(el('div', 'err', 'MAINNET. To go on, type MAINNET in capitals:'));
+      const input = el('input'); input.type = 'text'; input.id = 'mainnet-word'; input.autocapitalize = 'characters'; input.autocomplete = 'off';
+      input.value = PM.mainnetConfirmed ? 'MAINNET' : '';
+      input.addEventListener('input', () => {
+        const yes = input.value === 'MAINNET';
+        if (yes !== PM.mainnetConfirmed) { PM.mainnetConfirmed = yes; log(yes ? 'MAINNET typed: signing is unlocked' : 'signing is locked again'); render(); const again = $('mainnet-word'); if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); } }
+      });
+      card.appendChild(input);
+      gate.appendChild(card);
+    }
+
+    const wb = $('walletBox'); wb.textContent = '';
+    if (c && c.ok) {
+      wb.appendChild(el('h2', null, 'Wallet'));
+      const card = el('div', 'card' + (PM.status === 'wrong-account' || PM.status === 'connect-failed' ? ' bad' : ''));
+      const state = el('div', 'state');
+      if (!window.IsabellaWallet && window.Wallet && !window.Wallet.isDevMock) state.textContent = 'This build has no wallet bridge. Use the store app’s debug build.';
+      else if (PM.status === 'wrong-account') state.textContent = 'The wallet connected ' + PM.connected + ', but this plan is for ' + c.signer + '.\nPress Disconnect, switch to that account in the wallet, and connect again.';
+      else if (PM.status === 'connect-failed') state.textContent = 'Could not connect: ' + PM.connectError;
+      else if (PM.connected) state.textContent = 'Connected: ' + PM.connected + (PM.walletLabel ? '  (' + PM.walletLabel + ')' : '') + '\nIt is the account this plan is for.' + (PM.balance != null ? '\nBalance: ' + P.amount9(PM.balance) + ' SOL' : '') + '\nRPC checked: it is ' + c.clusterInfo.label + '.';
+      else state.textContent = 'Not connected. The wallet will be asked for ' + c.clusterInfo.chain + '. Choose the account ' + c.signer + '.';
+      card.appendChild(state);
+      card.appendChild(button('b-connect', PM.status === 'connecting' ? 'Connecting…' : 'Connect the wallet (' + c.clusterInfo.label + ')', connect, canAct() && PM.status !== 'connecting' && PM.status !== 'connected'));
+      card.appendChild(button('b-disconnect', 'Disconnect', disconnect, !!window.Wallet, 'alt'));
+      wb.appendChild(card);
+    }
+
+    const steps = $('steps'); steps.textContent = '';
+    if (c && c.ok) {
+      steps.appendChild(el('h2', null, 'Sign'));
+      c.steps.forEach((s, i) => {
+        const st = PM.steps[i];
+        const earlier = PM.steps.slice(0, i).every((p) => p.state === 'done' || p.state === 'already');
+        const finished = st.state === 'done' || st.state === 'already';
+        const card = el('div', 'card' + (finished ? ' done' : st.state === 'failed' ? ' bad' : ''));
+        card.id = 'step-' + i;
+        card.appendChild(el('div', null, 'Transaction ' + (i + 1) + ': ' + s.title + '  (' + s.instructions.map((d) => d.name).join(', ') + ')'));
+        if (st.guard) card.appendChild(el('div', st.guard.ok ? 'ok' : 'err', st.guard.text));
+        if (st.simulation) {
+          card.appendChild(el('div', st.simulation.ok ? 'ok' : 'err', st.simulation.ok ? 'Simulation passed (' + st.simulation.units + ' compute units). Nothing has been signed yet.' : 'Simulation failed: ' + JSON.stringify(st.simulation.err)));
+          if (!st.simulation.ok) card.appendChild(el('div', 'mono muted', st.simulation.logs.join('\n')));
+        }
+        if (st.signature) {
+          card.appendChild(el('div', 'muted', st.state === 'sent' ? 'Sent. Waiting for the network…' : 'Signature:'));
+          card.appendChild(el('div', 'addr', st.signature));
+          card.appendChild(el('div', 'mono muted', explorer(st.signature)));
+        }
+        if (st.verified) card.appendChild(el('div', 'ok', st.verified));
+        if (st.state === 'done') card.appendChild(el('div', 'ok', 'Confirmed.'));
+        if (st.error) card.appendChild(el('div', 'err', st.error));
+        const ready = canAct() && PM.status === 'connected' && earlier && !finished;
+        card.appendChild(button('b-sim-' + i, st.state === 'checking' ? 'Checking…' : '1. Check the chain and simulate', () => simulate(i), ready && st.state !== 'checking' && st.state !== 'signing' && st.state !== 'sent', 'alt'));
+        card.appendChild(button('b-sign-' + i, st.state === 'signing' ? 'Waiting for the wallet…' : '2. Sign in the wallet', () => sign(i), ready && st.state === 'simulated'));
+        steps.appendChild(card);
+      });
+      if (PM.finished) {
+        const done = el('div', 'card done');
+        done.appendChild(el('div', 'ok', 'All done. On the Mac, run the script again (create-pool.mjs) or status.mjs to see the result.'));
+        done.appendChild(el('div', 'muted', 'Press Disconnect before you go back to the game, so the game does not keep this account.'));
+        steps.appendChild(done);
+      }
+    }
+  }
+
+  $('b-paste').addEventListener('click', () => {
+    const text = $('paste').value;
+    if (!text.trim()) return;
+    loadBytes(new TextEncoder().encode(text), 'pasted');
+  });
+
+  render();
+  fromFragment();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "isabella-ocean-rpc",
+  "private": true,
+  "type": "module",
+  "description": "RPC relay for the Isabella Ocean store app (Cloudflare Worker). No dependencies; wrangler is run with npx. See docs/RPC-RELAY.md.",
+  "scripts": {
+    "test": "node test/relay.test.mjs && node test/app-methods.test.mjs",
+    "mutants": "node test/mutants.mjs",
+    "dev": "npx wrangler dev --local --port 8787 --ip 127.0.0.1"
+  }
+}

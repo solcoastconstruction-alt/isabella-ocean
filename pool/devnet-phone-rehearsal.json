@@ -1,0 +1,35 @@
+{
+  "cluster": "devnet",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "programId": "DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib",
+  "rentMode": "meta",
+  "pool": "AdqDPgeuvk3Zu4o7QwxLtsWjSJiMAryji5pfgeYD9Qck",
+  "validatorList": "8UzrzbYCEuxbkLTZUopU9EWrFUYjcj8KkSZ1KgGAq64u",
+  "reserve": "125sL7fN2qyw4UUAoz7oSFsxjnHmBwMDovDhJrvyVv7B",
+  "mint": "9vDvNw3rjXaFLQHRBWv7hE7SZ7pVKXMyerfB1jMknE5u",
+  "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "withdrawAuthority": "2pQeyNbPvkwF5BfCfNCzquy9BRPC2hnNXVtmzWfsnj6s",
+  "managerFeeAccount": "FR5hqx9bUbZWTVm1XeNEVeHN6uZzWbu3cCWQLtxYHMdc",
+  "feeOwner": "5WqtFqLXduWbMukDXY1C2PaLXXfrurQzLE9412rv311t",
+  "manager": "Fe4U9CYaYasZtY8FzvhSLyaNw69XPuqcuGVvk1UfViiG",
+  "staker": "9a9ghPDpPTLrGGAz5nnEaicTmcSKRCmn27syey9bXKoD",
+  "metadata": "F526X87aiMGXxjpoG4zzu9p7onKYntve62jBgondk5Gq",
+  "settings": {
+    "epochFee": "1/1 (100% of rewards)",
+    "solWithdrawalFee": "3/1000 (0.3%)",
+    "stakeWithdrawalFee": "0 (set to 0/100 after Initialize; live after 2 epoch boundaries)",
+    "depositFees": "0",
+    "maxValidators": 4,
+    "stakeDepositAuthority": "manager (blocks the stake-deposit \"leech\" trick); SOL deposits stay permissionless",
+    "tokenName": "Isabella Ocean Pass",
+    "tokenSymbol": "OCEAN",
+    "tokenUri": "https://isabellaocean-app.pages.dev/ocean-pass.json"
+  },
+  "crank": {
+    "reserveBufferSol": "1.05",
+    "reserveBufferPct": 0,
+    "depositSol": "1.01"
+  },
+  "treasurySeedAccount": "AzTfPkZarcrGBdBho8mysUL8JjDi35n78hjxth5Wv6yA",
+  "validators": []
+}

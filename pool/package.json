@@ -13,7 +13,7 @@
     "status": "node status.mjs",
     "collect-fees": "node collect-fees.mjs",
     "smoke": "node smoke.mjs",
-    "test": "node test/encoding.test.mjs && node test/policy.test.mjs"
+    "test": "node test/encoding.test.mjs && node test/policy.test.mjs && node test/plan.test.mjs"
   },
   "dependencies": {
     "@solana/spl-stake-pool": "1.1.8",

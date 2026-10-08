@@ -54,7 +54,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void pinToHome() { runOnUiThread(MainActivity.this::requestPin); }
         /** Opens one of the game's own web pages (privacy policy, terms) in the browser; nothing else. */
         @JavascriptInterface public boolean openUrl(String url) {
-            if (url == null || !url.startsWith("https://isabellaocean-app.pages.dev/")) return false;
+            if (url == null || !(url.startsWith("https://isabellaocean-app.pages.dev/") || url.startsWith("https://isabellaocean.app/"))) return false;
             runOnUiThread(() -> {
                 try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception e) { Log.w("Isabella", "no browser for " + url); }
             });
@@ -107,18 +107,27 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (BuildConfig.DEBUG && intent.hasExtra("page")) web.loadUrl(startPage(intent));
+        if (TEST_PAGES && intent.hasExtra("page")) web.loadUrl(startPage(intent));
         maybePinToHome(intent);
     }
 
+    /** Debug builds and the owner build (build.gradle, -PownerPages=true) carry the test pages. */
+    private static final boolean TEST_PAGES = BuildConfig.DEBUG || BuildConfig.OWNER_PAGES;
+
     /**
-     * The game, or in debug builds only a test page from the assets:
+     * The game, or in debug and owner builds only a test page from the assets:
      * adb shell am start -n &lt;package&gt;/app.isabella.mermaid.MainActivity --es page wallet-test.html
+     * A test page may also be handed a base64url "plan" extra, which it reads from the URL fragment
+     * (pool-manager.html; pool/phone-plan.mjs sends it). Plain release builds ignore both extras.
      */
     private static String startPage(Intent intent) {
-        if (BuildConfig.DEBUG && intent != null) {
+        if (TEST_PAGES && intent != null) {
             String page = intent.getStringExtra("page");
-            if (page != null && page.matches("[A-Za-z0-9_-]+\\.html")) return "file:///android_asset/" + page;
+            if (page != null && page.matches("[A-Za-z0-9_-]+\\.html")) {
+                String plan = intent.getStringExtra("plan");
+                boolean hasPlan = plan != null && plan.length() <= 200_000 && plan.matches("[A-Za-z0-9_-]+");
+                return "file:///android_asset/" + page + (hasPlan ? "#plan=" + plan : "");
+            }
         }
         return "file:///android_asset/index.html";
     }

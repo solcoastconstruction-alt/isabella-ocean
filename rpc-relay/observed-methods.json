@@ -1,0 +1,323 @@
+{
+  "about": "Recorded by rpc-relay/tools/observe-app.mjs: the JSON-RPC methods the store app's real scripts sent, per flow (call counts). durationsMs includes a 1.5 s quiet wait after each flow. walletOwnRpc is the test wallet's own traffic, which never goes through the app's rpcUrl. rpc-relay/test/app-methods.test.mjs reads \"methods\".",
+  "methods": [
+    "getAccountInfo",
+    "getBalance",
+    "getBlockHeight",
+    "getEpochInfo",
+    "getLatestBlockhash",
+    "getMinimumBalanceForRentExemption",
+    "getMultipleAccounts",
+    "getProgramAccounts",
+    "getRecentPerformanceSamples",
+    "getSignatureStatuses",
+    "getSignaturesForAddress",
+    "getStakeMinimumDelegation",
+    "getTokenAccountBalance",
+    "getTokenAccountsByOwner",
+    "getTransaction",
+    "simulateTransaction"
+  ],
+  "runs": [
+    {
+      "what": "devnet, every parent flow: app -> logging proxy -> public devnet",
+      "when": "2026-10-05T01:45:48.515Z",
+      "flows": {
+        "boot": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1
+        },
+        "recheck": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1
+        },
+        "tokens": {
+          "getBalance": 1,
+          "getTokenAccountsByOwner": 1
+        },
+        "stake": {
+          "getAccountInfo": 3,
+          "getTokenAccountsByOwner": 2,
+          "getEpochInfo": 1,
+          "getBalance": 1,
+          "getMinimumBalanceForRentExemption": 1,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1,
+          "getSignatureStatuses": 2,
+          "getBlockHeight": 1,
+          "getSignaturesForAddress": 1
+        },
+        "recheck#2": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1
+        },
+        "exit-slow-cancelled": {
+          "getAccountInfo": 3,
+          "getTokenAccountsByOwner": 1,
+          "getEpochInfo": 1,
+          "getStakeMinimumDelegation": 1,
+          "getMinimumBalanceForRentExemption": 1,
+          "getRecentPerformanceSamples": 1,
+          "getMultipleAccounts": 2,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1
+        },
+        "pending-exits": {
+          "getProgramAccounts": 1,
+          "getEpochInfo": 1,
+          "getRecentPerformanceSamples": 1,
+          "getMultipleAccounts": 1
+        },
+        "claim": {
+          "getProgramAccounts": 1,
+          "getEpochInfo": 1,
+          "getRecentPerformanceSamples": 1,
+          "getMultipleAccounts": 1
+        },
+        "exit-instant-quiet": {
+          "getAccountInfo": 2,
+          "getTokenAccountsByOwner": 2,
+          "getEpochInfo": 1,
+          "getMinimumBalanceForRentExemption": 1,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1,
+          "getSignaturesForAddress": 3,
+          "getTransaction": 3,
+          "getBlockHeight": 1,
+          "getSignatureStatuses": 1
+        },
+        "buy-usdc-short": {
+          "getSignaturesForAddress": 1,
+          "getAccountInfo": 2,
+          "getTokenAccountBalance": 1
+        },
+        "buy-sol": {
+          "getSignaturesForAddress": 1,
+          "getBalance": 1,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1,
+          "getSignatureStatuses": 3,
+          "getBlockHeight": 1,
+          "getTokenAccountsByOwner": 2,
+          "getTransaction": 3
+        },
+        "restore": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1,
+          "getTransaction": 1
+        },
+        "recheck#3": {
+          "getTokenAccountsByOwner": 1,
+          "getTransaction": 1
+        }
+      },
+      "durationsMs": {
+        "connect": 258,
+        "boot": 2767,
+        "recheck": 2147,
+        "tokens": 2121,
+        "stake": 6504,
+        "recheck#2": 2131,
+        "exit-slow-cancelled": 4141,
+        "pending-exits": 2032,
+        "claim": 2012,
+        "exit-instant-quiet": 10166,
+        "buy-usdc-short": 2836,
+        "buy-sol": 8997,
+        "restore": 2783,
+        "recheck#3": 1747
+      },
+      "non200": {},
+      "batches": 0,
+      "webSocketsConstructed": 0,
+      "webSocketUpgradesAtProxy": 0,
+      "walletOwnRpc": {
+        "stake": {
+          "sendTransaction": 1
+        },
+        "exit-instant-quiet": {
+          "sendTransaction": 1
+        },
+        "buy-sol": {
+          "sendTransaction": 1,
+          "getSignatureStatuses": 1
+        }
+      },
+      "methods": [
+        "getAccountInfo",
+        "getBalance",
+        "getBlockHeight",
+        "getEpochInfo",
+        "getLatestBlockhash",
+        "getMinimumBalanceForRentExemption",
+        "getMultipleAccounts",
+        "getProgramAccounts",
+        "getRecentPerformanceSamples",
+        "getSignatureStatuses",
+        "getSignaturesForAddress",
+        "getStakeMinimumDelegation",
+        "getTokenAccountBalance",
+        "getTokenAccountsByOwner",
+        "getTransaction",
+        "simulateTransaction"
+      ]
+    },
+    {
+      "what": "mainnet-beta, read-only (token list, Jupiter dry runs): app -> logging proxy -> public mainnet",
+      "when": "2026-10-05T01:44:36.463Z",
+      "flows": {
+        "mainnet-recheck": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1
+        },
+        "mainnet-tokens": {
+          "getBalance": 1,
+          "getTokenAccountsByOwner": 2
+        },
+        "mainnet-buy-sol-dry": {
+          "getAccountInfo": 1,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1
+        },
+        "mainnet-buy-fallback-dry": {
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1
+        },
+        "mainnet-buy-usdc-dry": {
+          "getAccountInfo": 1,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1
+        }
+      },
+      "durationsMs": {
+        "connect": 258,
+        "mainnet-recheck": 2790,
+        "mainnet-tokens": 6454,
+        "mainnet-buy-sol-dry": 3554,
+        "mainnet-buy-fallback-dry": 3433,
+        "mainnet-buy-usdc-dry": 4139
+      },
+      "non200": {},
+      "batches": 0,
+      "webSocketsConstructed": 0,
+      "webSocketUpgradesAtProxy": 0,
+      "walletOwnRpc": {},
+      "methods": [
+        "getAccountInfo",
+        "getBalance",
+        "getLatestBlockhash",
+        "getSignaturesForAddress",
+        "getTokenAccountsByOwner",
+        "simulateTransaction"
+      ]
+    },
+    {
+      "what": "devnet: app -> the relay under wrangler dev -> public devnet",
+      "when": "2026-10-05T01:50:08.303Z",
+      "flows": {
+        "boot": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1
+        },
+        "tokens": {
+          "getBalance": 1,
+          "getTokenAccountsByOwner": 1
+        },
+        "stake": {
+          "getAccountInfo": 3,
+          "getTokenAccountsByOwner": 2,
+          "getEpochInfo": 1,
+          "getBalance": 1,
+          "getMinimumBalanceForRentExemption": 1,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1,
+          "getSignatureStatuses": 2,
+          "getBlockHeight": 1,
+          "getSignaturesForAddress": 1
+        },
+        "recheck": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1
+        },
+        "exit-slow-cancelled": {
+          "getAccountInfo": 3,
+          "getTokenAccountsByOwner": 1,
+          "getEpochInfo": 1,
+          "getStakeMinimumDelegation": 1,
+          "getMinimumBalanceForRentExemption": 1,
+          "getRecentPerformanceSamples": 1,
+          "getMultipleAccounts": 2,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1
+        },
+        "pending-exits": {
+          "getProgramAccounts": 1,
+          "getEpochInfo": 1,
+          "getRecentPerformanceSamples": 1,
+          "getMultipleAccounts": 1
+        },
+        "claim": {
+          "getProgramAccounts": 1,
+          "getEpochInfo": 1,
+          "getRecentPerformanceSamples": 1,
+          "getMultipleAccounts": 1
+        },
+        "exit-instant": {
+          "getAccountInfo": 2,
+          "getTokenAccountsByOwner": 2,
+          "getEpochInfo": 1,
+          "getMinimumBalanceForRentExemption": 1,
+          "getLatestBlockhash": 1,
+          "simulateTransaction": 1,
+          "getSignatureStatuses": 2,
+          "getBlockHeight": 1,
+          "getSignaturesForAddress": 1
+        },
+        "recheck#2": {
+          "getTokenAccountsByOwner": 1,
+          "getSignaturesForAddress": 1
+        }
+      },
+      "durationsMs": {
+        "connect": 258,
+        "boot": 2856,
+        "tokens": 2088,
+        "stake": 7224,
+        "recheck": 2157,
+        "exit-slow-cancelled": 4204,
+        "pending-exits": 2113,
+        "claim": 2033,
+        "exit-instant": 6338,
+        "recheck#2": 2205
+      },
+      "non200": {},
+      "batches": 0,
+      "webSocketsConstructed": 0,
+      "webSocketUpgradesAtProxy": 0,
+      "walletOwnRpc": {
+        "stake": {
+          "sendTransaction": 1
+        },
+        "exit-instant": {
+          "sendTransaction": 1
+        }
+      },
+      "methods": [
+        "getAccountInfo",
+        "getBalance",
+        "getBlockHeight",
+        "getEpochInfo",
+        "getLatestBlockhash",
+        "getMinimumBalanceForRentExemption",
+        "getMultipleAccounts",
+        "getProgramAccounts",
+        "getRecentPerformanceSamples",
+        "getSignatureStatuses",
+        "getSignaturesForAddress",
+        "getStakeMinimumDelegation",
+        "getTokenAccountsByOwner",
+        "simulateTransaction"
+      ]
+    }
+  ]
+}

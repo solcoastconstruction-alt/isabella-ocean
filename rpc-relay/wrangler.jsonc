@@ -1,0 +1,30 @@
+// Isabella Ocean — RPC relay. See docs/RPC-RELAY.md before deploying.
+{
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "isabella-ocean-rpc",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+
+  // The relay must only ever answer on its own domain. Both of these stay false: the account's
+  // workers.dev subdomain carries a name that must not be tied to this product.
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "rpc.isabellaocean.app", "custom_domain": true }
+  ],
+
+  // Per-address rate limit (Workers Rate Limiting binding). 300 calls a minute: see docs/RPC-RELAY.md
+  // for where the number comes from. period may only be 10 or 60. namespace_id is any integer that
+  // no other limiter on the account uses.
+  "ratelimits": [
+    { "name": "RPC_LIMITER", "namespace_id": "4201", "simple": { "limit": 300, "period": 60 } }
+  ],
+
+  // The Worker logs nothing itself. Platform request logs stay off so that nothing about callers
+  // or traffic is kept; turn them on only while investigating something.
+  "observability": { "enabled": false }
+
+  // Secret, set once with `wrangler secret put UPSTREAM_RPC_URL` (never in this file):
+  //   UPSTREAM_RPC_URL   the provider's full JSON-RPC URL, key included
+  // For `wrangler dev`, put it in rpc-relay/.dev.vars (gitignored).
+}

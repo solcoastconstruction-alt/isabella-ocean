@@ -14,6 +14,7 @@ WebView app: no framework, no androidx.
 - **Java:** build with Java 17 (Homebrew `openjdk@17`). Android Studio's bundled Java is now 25, which Gradle 8.11 rejects ("Unsupported class file major version 69").
 - **Version:** 2.5 (versionCode 7), with `compileSdk`/`targetSdk` 36 and `minSdk` 26.
 - **Flavor assets:** `android/app/src/<flavor>/assets/flavor.js` overrides `web/flavor.js`.
+- **Mainnet config:** `android/app/src/storeRelease/assets/config.js` overrides `web/config.js` in the store release build only (PAYMENTS.md, "Devnet to mainnet"). `scripts/sign-release.sh` therefore now signs a mainnet APK.
 
 ## Build
 ```bash
@@ -31,6 +32,7 @@ The APKs land in `android/app/build/outputs/apk/<flavor>/debug/`. To check what 
 - **Release:** a dApp Store release needs a **release keystore**, kept safe forever, because every update must use the same key. Then:
   - add its SHA-256 to `site/.well-known/assetlinks.json` and redeploy the site;
   - otherwise wallets show the app as unverified.
+- **Scripts (5 Oct):** `scripts/make-release-keystore.sh` (the owner runs it once; it makes a random password and keeps it in the Mac's login Keychain as `isabella-ocean-release-keystore`, at his request on 5 Oct; the keystore is `~/isabella-ocean-keys/isabella-ocean-release.jks`, alias `isabella-ocean`, outside the repo) and `scripts/sign-release.sh` (builds `assembleStoreRelease`, zipaligns, signs with apksigner, reading the password from the Keychain, and writes `.local/release/isabella-ocean-<version>-<code>-<cluster>.apk`). The password is never printed or put on a command line; he must back up the keystore file and the password elsewhere.
 
 ## What the page can call (`MainActivity.java`)
 - **`IsabellaStore.get(key)` / `set(key, value)`:** SharedPreferences file `isabella`, where all game saves live. `adb install -r` keeps it.
@@ -56,6 +58,13 @@ adb forward tcp:9460 localabstract:webview_devtools_remote_$(adb shell pidof app
 ```
 Then connect to `http://127.0.0.1:9460/json/list` (`test/paywall/cdp.js` is a small client). The
 pid, and so the socket name, changes whenever the app restarts.
+
+## Debug-only pages
+Debug builds also pack `android/app/src/debug/assets/`, opened with the `page` intent extra (release builds ignore it):
+- `wallet-test.html`: the wallet bridge by itself, with a memo transaction.
+- `pool-manager.html` (+ `pool-plan.js`): signs the stake pool's manager steps or a fee collection with the phone's wallet. It is opened by `pool/phone-plan.mjs push`, which also sends the plan in a `plan` extra (`pool/README.md` "Phone manager").
+
+**The owner build (7 Oct 2026).** Wallets judge the app's identity domain when it asks them to sign, and on mainnet the Seed Vault Wallet refuses the debug build's `pages.dev` identity while it approves the release build's `isabellaocean.app` (kids-bundle Appendix F). So the manager steps on mainnet are signed from the **owner build**: `scripts/sign-release.sh --owner` builds the store release with `-PownerPages=true`, which packs `src/debug/assets` into the release, sets `BuildConfig.OWNER_PAGES` (MainActivity then honours the `page`/`plan` extras), and gives the build versionName `2.5-owner`; `pool/phone-plan.mjs push` accepts that in place of a debug build. The APK is named `…-owner.apk`, goes on the owner's phone only, and is never submitted: a plain `scripts/sign-release.sh` refuses to sign any build that contains the pages (`SIGN_RELEASE_UNSIGNED=<apk>` exercises the guards without a Gradle build).
 
 ## The emulator (for wallet tests and demo videos)
 - **The AVD:** `fz36` (serial `emulator-5554`; `ro.boot.qemu=1`). Tests refuse any device that isn't an emulator.

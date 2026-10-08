@@ -55,3 +55,18 @@ SHA-256 to the list (keep the debug one for test builds) and redeploy with `scri
   - a purchase never expires.
   - The pages also note the devnet testing period.
 - **Update the dates** at the top of each page whenever the content changes.
+
+## The product domain (isabellaocean.app), added 7 Oct 2026
+
+The same Pages project also answers on **https://isabellaocean.app**, the identity the release (dApp Store)
+build presents to wallets. Wallets judge that host at signing time (kids-bundle Appendix F), so
+`site/_worker.js` serves it as the product ships and leaves pages.dev exactly as the judges were given it:
+- no `/isabella-ocean.apk` (404), no sideload paragraph (`#devnet-apk`), and the devnet-only passages removed
+  per response: the home page's `p.note` ("currently in testing on Solana's devnet") and the terms' "Testing
+  period" section;
+- a real 404 for any path that is not part of the site (Pages would otherwise answer with the home page);
+  the served set is listed in the worker (`STORE_PATHS`, `/img/`), keep it in step with `site/`.
+`test/site/worker.test.mjs` (also in `cd tools && npm test`) checks each removal matches its page exactly once,
+that no devnet wording survives on the product pages, the 404 set, and that pages.dev passes through untouched.
+Deploying is the same `scripts/deploy-site.sh <live apk>`; afterwards check `curl -s https://isabellaocean.app/
+| grep -ci devnet` is 0 and `curl -sI https://isabellaocean.app/nothing-here` is 404.

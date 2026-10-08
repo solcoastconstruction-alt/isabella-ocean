@@ -8,7 +8,10 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | `node test/verify.js` | Isabella: all 20 levels finishable; levels 1–10 byte-identical (frozen) | 20/20 | – |
 | `node test/hub/hub.test.js` | Title screen (a game, Play, a game, "+") and the more-games screen, at 915×412 and 800×360 in both flavors: buttons ≥19vh, nothing overlapping, every game opens and comes back; the two recipes in `web/hub.js` carried out on a copy | 142/142 | 9454 |
 | `node test/paywall/drive.js` | Paywall, parent gate, grown-ups screen; family baseline unchanged | 96/96 | 9450 |
-| `cd tools && npm test` | Payments: unit tests (including the price as exactly 4,990,000 USDC base units), devnet simulation, Jupiter read-only | 42 pass, 9 skipped | – |
+| `cd tools && npm test` | Payments: unit tests (including the price as exactly 4,990,000 USDC base units), devnet simulation, Jupiter read-only, the mainnet config against the devnet one | 48 pass, 9 skipped (5 Oct) | – |
+| `node rpc-relay/test/relay.test.mjs` | RPC relay guards: allow-list, body and batch caps, CORS, rate limit, no provider URL in any answer (RPC-RELAY.md) | 29/29 (5 Oct) | – |
+| `node rpc-relay/test/app-methods.test.mjs` | The relay's allow-list equals the RPC methods the app's scripts call; no send, no subscription | 10/10 (5 Oct) | – |
+| `node rpc-relay/test/mutants.mjs` | Breaks copies of the relay and the app on purpose (about a minute) | 45/45 caught (5 Oct) | – |
 | `node --test test/games/match/logic.test.js` | Shell Match rules | 10/10 | – |
 | `node test/games/pop/verify.js` | Bubble Party rules, level table, old-save conversion | 25/25 | – |
 | `node test/games/pop/browser.js` | Bubble Party with real touch drags | 86/86 | 9455 |

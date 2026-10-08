@@ -11,6 +11,12 @@
 //   POOL_ALLOW_MAINNET=yes node create-pool.mjs --cluster mainnet --manager <SQUADS_VAULT>
 // creates everything that doesn't need the manager's signature, prints the manager-signed
 // instructions as JSON for a Squads transaction, and exits; re-run after executing them.
+//
+// Mainnet (or a devnet rehearsal) with the manager in a PHONE wallet (README "Phone manager"):
+//   node create-pool.mjs --manager <PHONE_ACCOUNT> --fee-owner <REVENUE_WALLET> --plan-out plans/create.json
+// does the same, and also writes those instructions as a plan file for the debug-only page
+// pool-manager.html (send it with `node phone-plan.mjs push`). --fee-owner makes the manager fee
+// account an OCEAN token account owned by another wallet; it works with any kind of manager.
 import {
   PublicKey, SystemProgram, StakeProgram, Authorized, Lockup,
 } from '@solana/web3.js';
@@ -20,7 +26,7 @@ import {
 } from '@solana/spl-token';
 import {
   parseArgs, loadContext, saveConfig, loadKeypair, assertSendAllowed, lamportsToSol, solToLamports,
-  feeToString, explorerAddr, toJson, pk, base58,
+  feeToString, explorerAddr, toJson, pk, CLUSTERS,
 } from './lib/env.mjs';
 import {
   STAKE_POOL_PROGRAM_ID_DEVNET, STAKE_POOL_PROGRAM_ID_MAINNET, STAKE_POOL_SPACE, STAKE_ACCOUNT_SPACE,
@@ -29,6 +35,7 @@ import {
 } from './lib/ix.mjs';
 import { decodeStakePool, stakeMetaRent } from './lib/state.mjs';
 import { sendTx } from './lib/tx.mjs';
+import { ixToJson, buildPlan, writePlan } from './lib/plan.mjs';
 import { loadState, isStale, buildUpdateInstructions, quoteDepositSol, rentMode } from './lib/pool-ops.mjs';
 
 // ---- BUILD-PLAN "Pool settings" ----
@@ -41,7 +48,7 @@ const SETTINGS = {
   maxValidators: 4,
   name: 'Isabella Ocean Pass',
   symbol: 'OCEAN',
-  uri: 'https://isabella.app/ocean-pass.json', // placeholder; upload metadata/ocean-pass.json for mainnet
+  uri: 'https://isabellaocean-app.pages.dev/ocean-pass.json', // site/ocean-pass.json, a copy of metadata/ocean-pass.json (devnet's token still carries the old isabella.app placeholder)
 };
 
 const args = parseArgs();
@@ -66,14 +73,23 @@ const reserveKp = kpOrCfg('reserve', 'reserve');
 const mintKp = kpOrCfg('mint', 'mint');
 const pool = poolKp.publicKey, validatorList = listKp.publicKey, reserve = reserveKp.publicKey, mint = mintKp.publicKey;
 const withdrawAuthority = findWithdrawAuthority(programId, pool);
-const managerFeeAccount = getAssociatedTokenAddressSync(mint, manager, true, TOKEN_PROGRAM_ID);
-const squadsMode = !managerKp;
+// The manager fee account is an OCEAN token account. Initialize checks only that the token program owns
+// it, that it is initialized and that its mint is the pool mint (state.rs check_manager_fee_info): the
+// wallet that owns it need not be the manager and does not sign. --fee-owner picks that wallet.
+if (args['fee-owner'] && cfg.feeOwner && cfg.feeOwner !== pk(args['fee-owner']).toBase58()) throw new Error(`--fee-owner ${args['fee-owner']} differs from the fee owner already in ${ctx.configPath} (${cfg.feeOwner})`);
+const feeOwner = args['fee-owner'] ? pk(args['fee-owner']) : cfg.feeOwner ? pk(cfg.feeOwner) : manager;
+const managerFeeAccount = getAssociatedTokenAddressSync(mint, feeOwner, true, TOKEN_PROGRAM_ID);
+const squadsMode = !managerKp; // the manager signs somewhere else: a Squads vault, or a phone wallet
+const planOut = args['plan-out'];
+if (planOut === true) throw new Error('--plan-out needs a file name');
+if (planOut && !squadsMode) throw new Error('--plan-out is for a manager that signs elsewhere: pass --manager <address> too');
 const managerSigner = managerKp ? [managerKp] : [];
 const squadsIxs = [];
 const sigs = {};
 
 console.log(`cluster ${ctx.cluster}  program ${programId.toBase58()}  pool ${pool.toBase58()}`);
-console.log(`manager ${manager.toBase58()}${squadsMode ? ' (external signer: Squads vault)' : ''}  staker ${staker.publicKey.toBase58()}  payer ${payer.publicKey.toBase58()}`);
+console.log(`manager ${manager.toBase58()}${squadsMode ? ' (signs elsewhere: Squads vault or phone wallet)' : ''}  staker ${staker.publicKey.toBase58()}  payer ${payer.publicKey.toBase58()}`);
+console.log(`manager fee account ${managerFeeAccount.toBase58()}  owned by ${feeOwner.equals(manager) ? 'the manager' : `${feeOwner.toBase58()} (not the manager)`}`);
 if (dry) console.log('DRY RUN: nothing will be sent');
 
 const stakeRent = BigInt(await conn.getMinimumBalanceForRentExemption(STAKE_ACCOUNT_SPACE));
@@ -82,7 +98,9 @@ const minDelegationRpc = BigInt((await conn.getStakeMinimumDelegation()).value);
 function persist(extra = {}) {
   const config = {
     cluster: ctx.cluster,
-    rpcUrl: cfg.rpcUrl ?? ctx.rpcUrl,
+    // The cluster's PUBLIC endpoint, never POOL_RPC_URL: a private RPC address carries an API key, and
+    // this file is committed and published. Scripts read the private one from the environment.
+    rpcUrl: cfg.rpcUrl ?? CLUSTERS[ctx.cluster].rpcUrl,
     programId: programId.toBase58(),
     rentMode: rentMode(cfg, programId),
     pool: pool.toBase58(),
@@ -92,6 +110,7 @@ function persist(extra = {}) {
     tokenProgram: TOKEN_PROGRAM_ID.toBase58(),
     withdrawAuthority: withdrawAuthority.toBase58(),
     managerFeeAccount: managerFeeAccount.toBase58(),
+    feeOwner: feeOwner.toBase58(),
     manager: manager.toBase58(),
     staker: staker.publicKey.toBase58(),
     metadata: findMetadata(mint).toBase58(),
@@ -119,13 +138,7 @@ async function send(label, instructions, signers) {
 }
 
 function forSquads(label, instruction) {
-  squadsIxs.push({
-    label,
-    programId: instruction.programId.toBase58(),
-    accounts: instruction.keys.map((m) => ({ pubkey: m.pubkey.toBase58(), isSigner: m.isSigner, isWritable: m.isWritable })),
-    dataBase58: base58(instruction.data),
-    dataHex: Buffer.from(instruction.data).toString('hex'),
-  });
+  squadsIxs.push({ label, instruction });
 }
 
 // ---------- A. reserve stake account, pool mint, manager fee account ----------
@@ -147,7 +160,7 @@ function forSquads(label, instruction) {
     ixs.push(createInitializeMint2Instruction(mint, 9, withdrawAuthority, null, TOKEN_PROGRAM_ID)); // no freeze authority (processor.rs L787)
     signers.push(mintKp);
   }
-  if (!feeAcc) ixs.push(createAssociatedTokenAccountIdempotentInstruction(payer.publicKey, managerFeeAccount, manager, mint, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID));
+  if (!feeAcc) ixs.push(createAssociatedTokenAccountIdempotentInstruction(payer.publicKey, managerFeeAccount, feeOwner, mint, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID));
   if (ixs.length) sigs.setupAccounts = await send('create reserve stake account, pool mint (9 decimals, no freeze authority) and manager fee account', ixs, signers);
   else console.log('  --  reserve, mint and manager fee account already exist');
 }
@@ -159,7 +172,8 @@ let poolState = null;
   poolState = acc && acc.owner.equals(programId) ? decodeStakePool(acc.data) : null;
   if (poolState?.accountType === 1) {
     console.log('  --  pool already initialized');
-    if (!poolState.manager.equals(manager)) throw new Error(`pool manager is ${poolState.manager.toBase58()}, not ${manager.toBase58()}`);
+    if (!poolState.manager.equals(manager)) throw new Error(`pool manager is ${poolState.manager.toBase58()}, not ${manager.toBase58()}. If you did not set that manager, someone else initialized this pool account: abandon it and start again with new account keys.`);
+    if (!poolState.managerFeeAccount.equals(managerFeeAccount)) throw new Error(`the pool's manager fee account is ${poolState.managerFeeAccount.toBase58()}, not ${managerFeeAccount.toBase58()} (the OCEAN account of fee owner ${feeOwner.toBase58()})`);
   } else {
     const ixs = [], signers = [];
     const listAcc = await conn.getAccountInfo(validatorList);
@@ -211,7 +225,7 @@ if (squadsMode && !(poolState?.accountType === 1)) {
   // pool not initialized yet: queue the manager settings behind Initialize in the same Squads batch
   forSquads('SetFee StakeWithdrawal 0/100', setFee({ programId, stakePool: pool, manager, feeType: FEE_TYPE.StakeWithdrawal, value: SETTINGS.stakeWithdrawalFee }));
   forSquads('SetFundingAuthority StakeDeposit -> manager', setFundingAuthority({ programId, stakePool: pool, manager, newAuthority: manager, fundingType: FUNDING_TYPE.StakeDeposit }));
-  forSquads(`CreateTokenMetadata ${SETTINGS.name} / ${SETTINGS.symbol} (payer = vault; fund it with ~0.02 SOL first)`, createTokenMetadata({ programId, stakePool: pool, manager, withdrawAuthority, poolMint: mint, payer: manager, name: SETTINGS.name, symbol: SETTINGS.symbol, uri: String(args['metadata-uri'] ?? SETTINGS.uri) }));
+  forSquads(`CreateTokenMetadata ${SETTINGS.name} / ${SETTINGS.symbol} (payer = the manager; fund it with ~0.02 SOL first)`, createTokenMetadata({ programId, stakePool: pool, manager, withdrawAuthority, poolMint: mint, payer: manager, name: SETTINGS.name, symbol: SETTINGS.symbol, uri: String(args['metadata-uri'] ?? SETTINGS.uri) }));
 } else if (!dry || poolState?.accountType === 1) {
   const acc = await conn.getAccountInfo(pool);
   const p = acc ? decodeStakePool(acc.data) : null;
@@ -243,9 +257,23 @@ if (squadsMode && !(poolState?.accountType === 1)) {
 
 if (squadsIxs.length) {
   persist();
-  console.log('\nManager-signed instructions for Squads (create one vault transaction with these, in order, then approve and execute):');
-  console.log(toJson(squadsIxs));
-  console.log('\nAfter Squads executes them, re-run this command to seed the pool and add validators.');
+  console.log('\nManager-signed instructions (Squads: create one vault transaction with these, in order, then approve and execute):');
+  console.log(toJson(squadsIxs.map((x) => ixToJson(x.label, x.instruction))));
+  if (planOut && !dry) {
+    // Initialize goes alone and first; the phone page then checks the pool's manager on chain before
+    // it sends anything else (README "Phone manager").
+    const isInit = (x) => x.instruction.data[0] === 0;
+    const steps = [];
+    if (squadsIxs.some(isInit)) steps.push({ title: 'Initialize the pool (alone, first)', instructions: squadsIxs.filter(isInit) });
+    const rest = squadsIxs.filter((x) => !isInit(x));
+    if (rest.length) steps.push({ title: 'Manager settings', instructions: rest });
+    const plan = buildPlan(ctx, { kind: 'create-pool', signer: manager, steps, note: `pool ${pool.toBase58()}; manager fee account ${managerFeeAccount.toBase58()} owned by ${feeOwner.toBase58()}` });
+    const w = writePlan(planOut, plan);
+    console.log(`\nPlan for the phone manager: ${w.file}\n  cluster ${ctx.cluster.toUpperCase()}   fingerprint ${w.fingerprint}   signer ${manager.toBase58()}`);
+    console.log(`  send it to the phone:  node phone-plan.mjs push ${planOut} --serial <adb serial>`);
+    console.log('  Do it NOW: until Initialize lands, anyone could initialize the empty pool account with their own manager.');
+  }
+  console.log('\nAfter the manager has signed them, re-run this command to seed the pool and add validators.');
   process.exit(0);
 }
 

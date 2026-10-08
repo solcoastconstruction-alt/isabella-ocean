@@ -4,7 +4,7 @@
   "description": "Builds web/vendor/solana.js (window.SolanaLib) and runs the payments tests",
   "scripts": {
     "bundle": "node bundle.mjs",
-    "test": "node --test --test-concurrency=1 \"../test/payments/*.test.mjs\"",
+    "test": "node --test --test-concurrency=1 \"../test/payments/*.test.mjs\" \"../test/site/*.test.mjs\"",
     "test:unit": "node --test ../test/payments/unit.test.mjs",
     "test:devnet": "node --test ../test/payments/devnet.test.mjs",
     "test:devnet-sim": "node --test ../test/payments/devnet-sim.test.mjs",

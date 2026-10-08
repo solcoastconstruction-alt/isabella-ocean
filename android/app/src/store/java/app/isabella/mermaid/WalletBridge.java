@@ -73,9 +73,13 @@ final class WalletBridge {
     private static final int REQUEST_WALLET = 0x15AB;
 
     // Contract 1 identity. The wallet resolves the relative icon against the identity URI.
-    // The wallet verifies this identity against https://isabellaocean-app.pages.dev/.well-known/assetlinks.json
+    // The wallet verifies this identity against <identity>/.well-known/assetlinks.json
     // (package + signing-cert SHA-256; site source in site/). The icon path is relative to the URI.
-    private static final Uri IDENTITY_URI = Uri.parse("https://isabellaocean-app.pages.dev");
+    // Release builds (the dApp Store) present the product's own domain; debug builds keep the
+    // pages.dev address that the hackathon's devnet test APK and its judge steps were submitted with.
+    // Both addresses serve the same Pages site, and its assetlinks.json lists both certificates.
+    private static final Uri IDENTITY_URI = Uri.parse(
+            BuildConfig.DEBUG ? "https://isabellaocean-app.pages.dev" : "https://isabellaocean.app");
     private static final Uri ICON_URI = Uri.parse("icon.png");
     private static final String IDENTITY_NAME = "Isabella Ocean";
     private static final String DEVNET = "solana:devnet", MAINNET = "solana:mainnet";

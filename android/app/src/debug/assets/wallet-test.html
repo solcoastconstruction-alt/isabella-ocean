@@ -33,8 +33,13 @@
 <div id="log"></div>
 <script>
 'use strict';
-const CHAIN = 'solana:devnet';
-const RPC = 'https://api.devnet.solana.com';
+// Devnet unless the page is opened with the intent extra `--es plan mainnet` (MainActivity turns it into
+// the fragment #plan=mainnet). On mainnet the memo costs the signer one real network fee (0.000005 SOL)
+// and the RPC is the app's own relay.
+const MAINNET = location.hash === '#plan=mainnet';
+const CHAIN = MAINNET ? 'solana:mainnet' : 'solana:devnet';
+const RPC = MAINNET ? 'https://rpc.isabellaocean.app' : 'https://api.devnet.solana.com';
+if (MAINNET) addEventListener('DOMContentLoaded', () => { document.querySelector('h1').textContent = 'IsabellaWallet bridge test: MAINNET (real fee)'; document.querySelector('h1').style.color = '#f66'; document.getElementById('b-connect').textContent = 'Connect (MAINNET)'; });
 const MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'; // SPL Memo v2
 const W = window.IsabellaWallet;
 const $ = (id) => document.getElementById(id);
@@ -175,10 +180,10 @@ const T = (window.T = {
         return r;
       }
       const sig = r.signatures[0];
-      result('signature: ' + sig + '\nhttps://explorer.solana.com/tx/' + sig + '?cluster=devnet\nstatus: waiting…');
+      result('signature: ' + sig + '\nhttps://explorer.solana.com/tx/' + sig + (MAINNET ? '' : '?cluster=devnet') + '\nstatus: waiting…');
       T.status = 'confirming';
       r.confirmation = await T.confirm(sig);
-      result('signature: ' + sig + '\nhttps://explorer.solana.com/tx/' + sig + '?cluster=devnet\nstatus: ' + r.confirmation);
+      result('signature: ' + sig + '\nhttps://explorer.solana.com/tx/' + sig + (MAINNET ? '' : '?cluster=devnet') + '\nstatus: ' + r.confirmation);
       T.status = 'send done';
       T.refresh();
       return r;

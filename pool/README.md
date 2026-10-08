@@ -24,7 +24,7 @@ Background research, with source links: [`docs/kids-bundle/appendix-b-own-stake-
 | Validator stake accounts | One per validator, each holding at least 1 SOL + rent (the 1 SOL minimum delegation since stake program v5) |
 | Transient stake accounts | Stake moving between the reserve and a validator. It merges at the next epoch's update |
 | Pool mint (OCEAN) | 9 decimals, mint authority = the pool's withdraw-authority PDA, no freeze authority |
-| Manager fee account | The manager's OCEAN account. The 100% reward fee and the 0.3% instant-exit fee are paid into it |
+| Manager fee account | An OCEAN token account. The 100% reward fee and the 0.3% instant-exit fee are paid into it. By default the manager owns it; `--fee-owner` gives it to another wallet (see [who signs what](#who-signs-what)) |
 
 **Settings** (fixed at creation, per the BUILD-PLAN):
 
@@ -94,14 +94,16 @@ Requirements: Node ≥ 20. Run everything from `pool/`. Nothing here needs the S
 
 ```bash
 npm ci                      # @solana/web3.js 1.98.4, @solana/spl-token 0.4.9, @solana/spl-stake-pool 1.1.8 (pinned)
-npm test                    # offline byte-layout tests (25)
+npm test                    # offline tests: byte layouts (25), crank policy (27), phone plans (20)
 node keys.mjs               # generate devnet keypairs into keys/devnet/ (gitignored, mode 600); never overwrites
 node airdrop.mjs --sol 5    # devnet faucet with retry/backoff (rate-limited per IP; https://faucet.solana.com is the fallback)
 node create-pool.mjs        # create pool + fees + funding authority + metadata + seed + 2 validators; idempotent, resumable
 node create-pool.mjs --dry-run
 node status.mjs             # read-only snapshot (add --json)
 node crank.mjs              # per-epoch update + rebalance; idempotent (add --dry-run, --no-rebalance, --force-update)
-node collect-fees.mjs       # manager: fee tokens -> SOL via WithdrawSol, no fee (add --amount, --to, --print-only)
+node collect-fees.mjs       # fee owner: fee tokens -> SOL via WithdrawSol, no fee (add --amount, --to, --print-only, --plan-out)
+node phone-plan.mjs show plans/x.json                    # what a plan file does, in plain words
+node phone-plan.mjs push plans/x.json --serial <serial>  # open it on a phone's debug build for signing
 node smoke.mjs              # end-to-end parent test on devnet (add --fee-test 0.01, --rebalance-before-stake-exit)
 node smoke.mjs --primary-exit-check   # phase 1: one 1.01 deposit staked into the primary; run again after
                                       # the next epoch boundary for phase 2: the 1.01 slow exit must come
@@ -122,7 +124,7 @@ node smoke.mjs --claim --parent keys/devnet/parent-<ts>.json   # claim a parent'
 | `POOL_PRIMARY_VALIDATOR` | crank | vote account of the primary validator (default: lowest commission) |
 | `POOL_PRIORITY_MICROLAMPORTS` | senders | optional priority fee |
 
-Key roles: **payer** (pays rent and fees, seeds the pool, funds the smoke-test parent), **manager** (fees, authorities, metadata; receives fee tokens; a Squads vault on mainnet), **staker** (adds validators, moves stake; the crank's key), and one-shot keys for **pool**, **validator-list**, **reserve** and **mint** (they sign only at creation).
+Key roles: **payer** (pays rent and fees, seeds the pool, funds the smoke-test parent), **manager** (fees, authorities, metadata; a Squads vault or a phone wallet account on mainnet), **fee owner** (the wallet that owns the manager fee account and so collects the fees; the manager unless `--fee-owner` names another), **staker** (adds validators, moves stake; the crank's key), and one-shot keys for **pool**, **validator-list**, **reserve** and **mint** (they sign only at creation).
 
 **GitHub Action** (`.github/workflows/pool-crank.yml`): runs `crank.mjs` at minute 17 every 6 hours, plus on manual dispatch (with a dry-run option).
 - **Devnet setup:** `gh secret set POOL_STAKER_KEYPAIR < pool/keys/devnet/staker.json`. Then fund the staker with about 0.05 SOL for fees.
@@ -189,9 +191,89 @@ For the owner, with his own keys and funds. **Not done by any agent.** Read [Ris
    - the variables `POOL_CLUSTER=mainnet`, `POOL_ALLOW_MAINNET=yes` and `RESERVE_BUFFER_SOL`.
 
    Run the workflow once with **dry run**, then for real.
-8. **Collect fees.** Run `node collect-fees.mjs --cluster mainnet --print-only`, then execute the printed instruction in Squads. It burns the vault's fee tokens for SOL with no fee. Note that this SOL comes out of the instant-exit reserve: the crank refills it from stake one epoch later.
+8. **Collect fees.** Run `node collect-fees.mjs --cluster mainnet --print-only`, then execute the printed instruction in Squads. It burns the vault's fee tokens for SOL with no fee. Note that this SOL comes out of the instant-exit reserve: the crank refills it from stake one epoch later. (Squads can only do this when the vault owns the fee account, which is the default.)
 9. **App.** Point `web/config.js` `stake.programId/pool/mint` at the mainnet addresses.
 10. **If the studio disappears,** parents can still exit without the app: anyone can run the update, and `WithdrawSol` or `WithdrawStake` need only the parent's wallet. Publish these exit steps somewhere that does not depend on the app.
+
+### Phone manager
+
+The variant the owner chose on 5 Oct 2026: the **manager is an ordinary account in the wallet on his phone** (the Seed Vault Wallet, signing over Mobile Wallet Adapter), and the **manager fee account belongs to a second account, the revenue wallet**. No Squads. It replaces steps 1, 4, 5 and 8 above; steps 2, 3, 6, 7, 9 and 10 are the same.
+
+#### Who signs what
+
+Checked against the program source (`program@v2.1.0`, `processor.rs` and `state.rs`) and then on devnet:
+
+| Action | Must sign | Why |
+|---|---|---|
+| `Initialize` | the **manager**, nobody else | `process_initialize` returns `SignatureMissing` unless the manager signed (L667-L670). The fee account is only checked by `check_manager_fee_info` (called at L799; `state.rs` L295-L316): owned by the token program, initialized, its mint is the pool mint, no unsupported extensions. **Who owns the token account is not checked, and that wallet does not sign.** |
+| `SetFee`, `SetFundingAuthority`, `CreateTokenMetadata` | the **manager** | `check_manager`. `CreateTokenMetadata` also needs a payer signature for about 0.016 SOL of rent; the plan makes the manager the payer. |
+| Collecting fees (`WithdrawSol` from the fee account) | the **fee owner** (the revenue wallet), nobody else | `process_withdraw_sol` (from L3149) never looks at the manager. It burns the tokens with a token-program `Burn` whose authority is the "user transfer authority" account (L3246-L3252), and the token program accepts only the token account's owner or a delegate. No fee is charged because the tokens come from the fee account itself (L3205-L3209). |
+| Changing the manager or the fee account later (`SetManager`) | the **old and the new manager** | `process_set_manager` (L3447-L3473). The new fee account's owner does not sign. |
+
+What follows for the two-wallet plan:
+- **The revenue wallet collects by itself.** The manager account is not needed and cannot do it: on devnet the same instruction signed by the manager fails in the token program with `owner does not match` (0x4).
+- **The collected SOL goes to the revenue wallet** unless `--to` names another address.
+- **The manager can still redirect future fees** by sending `SetManager` with a different fee account. Fee tokens already in the revenue wallet's account stay there.
+- **If the pool ever gets a SOL withdraw authority** (`SetFundingAuthority SolWithdraw`), that authority must sign every `WithdrawSol` as well, including fee collections. This pool leaves it unset.
+- **The revenue wallet could also just keep the OCEAN.** It is an ordinary token account; fee tokens keep their SOL value in the pool until they are collected.
+
+#### The signing page
+
+`pool-manager.html` is a page inside the store app's **debug** build (`android/app/src/debug/assets/`, next to `wallet-test.html`). It uses the app's own wallet bridge (`window.IsabellaWallet`, `web/wallet.js`), the code the game's payments already run on. Release builds do not pack it (check with `unzip -l <apk> | grep pool-`), and they ignore the intent extras that open it.
+
+- **Getting the plan onto the phone:** `node phone-plan.mjs push <plan> --serial <adb serial>` starts the debug build, or on mainnet the **owner build** (`scripts/sign-release.sh --owner`, docs/ANDROID.md: release-signed, presents the product domain, which the wallet approves where it refuses the debug build's pages.dev identity), on that one device with the plan's bytes in an intent extra. Nothing is typed or pasted, and nothing is written to the phone. `--serial` is required. The page also has a paste box as a fallback.
+- **Fingerprint:** the Mac prints a 16-character fingerprint of the plan file (the first 8 bytes of its SHA-256) and the page shows the fingerprint of what it received. **Compare them.** Any app on the phone can open this page with a plan of its own, so the fingerprint is what proves the plan on screen is yours.
+- **Cluster:** read from the plan file and shown as the big label, DEVNET (green) or MAINNET (red). There is no default. The page checks the RPC's genesis hash before it connects, and asks the wallet for that chain.
+- **Mainnet opt-in:** `create-pool.mjs`, `collect-fees.mjs` and `phone-plan.mjs push` all refuse mainnet without `POOL_ALLOW_MAINNET=yes`; the plan records it, the page refuses a mainnet plan without it, and the page then also wants the word MAINNET typed.
+- **What it shows before the wallet can open:** every instruction, with its program, its name, its decoded values (fees as fractions and percentages, token names, amounts) and every account with its role and SIGNER / WRITABLE marks. An instruction the page cannot decode byte for byte blocks the whole plan (`pool/test/plan.test.mjs`).
+- **One account signs.** The connected account must be the one the plan names; any other account is refused. It also pays the network fee.
+- **Each transaction is simulated first**, and the wallet opens only after the simulation passes and the person presses "Sign in the wallet".
+- **`Initialize` goes alone and first.** After it confirms, the page reads the pool account and continues only if the manager is the connected account and the fee account and staker are the plan's. Before any other manager instruction it reads the manager again. If someone else got there first it stops and says to abandon the pool.
+- **Afterwards press Disconnect.** The page shares the app's saved wallet authorization with the game.
+
+#### Steps (devnet dry run; mainnet differences in the last column)
+
+| # | Do this | On mainnet |
+|---|---|---|
+| 1 | In the Seed Vault Wallet, have two accounts: **manager** and **revenue**. Note both addresses. For devnet put the wallet on Devnet (Settings → tap the version number about 7 times → Developer mode → Devnet) and send the manager about 0.03 devnet SOL (`tools/keys/devbank/send.js`). | Leave the wallet on mainnet. The manager needs about 0.03 SOL. The revenue wallet needs a little SOL for fees when it collects. |
+| 2 | The phone has the store app's **debug** build with this page (`adb install -r android/app/build/outputs/apk/store/debug/app-store-debug.apk`; it updates in place and keeps saves, see `docs/ANDROID.md`). | The same debug build; it is the only build with the page. A release-signed build of the same package cannot be replaced by it, so use a phone that still has the debug-signed app. |
+| 3 | New keys and a new config for this pool, so the live devnet pool is untouched: `export POOL_KEYS_DIR=keys/devnet-dry-run POOL_CONFIG=devnet-dry-run.json`, then `node keys.mjs --roles payer,staker,pool,validator-list,reserve,mint`. Fund the payer (about 0.1 SOL with no validators, 2.1 SOL with two). | Runbook step 2: `node keys.mjs --cluster mainnet --roles payer,staker,pool,validator-list,reserve,mint`. |
+| 4 | **Phase 1:** `node create-pool.mjs --manager <MANAGER> --fee-owner <REVENUE> --plan-out plans/create.json`. It creates the accounts and the revenue wallet's OCEAN account, writes the plan and prints its fingerprint. | Add `POOL_ALLOW_MAINNET=yes POOL_RPC_URL=<private rpc>` in front and `--cluster mainnet --metadata-uri <URI>`. The plan file then holds the RPC address: keep it private (`pool/plans/` is gitignored). |
+| 5 | **At once:** `node phone-plan.mjs push plans/create.json --serial <serial>`. On the phone: check DEVNET and the fingerprint, read the summary, Connect and choose the **manager** account, then for transaction 1 press "Check the chain and simulate" and "Sign in the wallet". Wait for "Checked on chain: the pool is initialized, its manager is the connected account". Do the same for transaction 2. | `POOL_ALLOW_MAINNET=yes` in front. The label is MAINNET in red and the page wants MAINNET typed. Until `Initialize` lands anyone could initialize the empty pool account with their own manager, so do not leave a gap after step 4. If the page says STOP, abandon the pool and start again from step 3. |
+| 6 | Press Disconnect. On the Mac, `node status.mjs` must show your manager, fees 100% and 0.3%, "stake deposits: manager only", the metadata, and your fee account. | The same, with `--cluster mainnet`. |
+| 7 | **Phase 2:** the phase 1 command again, plus `--validators <a>,<b> --seed-extra-sol <buffer>` (or `--validator-count 0` to skip validators in a dry run). | Runbook step 6. |
+| 8 | **Collect fees**, when there are some: `node collect-fees.mjs --plan-out plans/collect.json`, then `node phone-plan.mjs push plans/collect.json --serial <serial>`. On the phone, Connect and choose the **revenue** account, simulate, sign. If the manager account is still connected the page refuses it: press Disconnect and connect again. | `POOL_ALLOW_MAINNET=yes` and `--cluster mainnet` on both commands. The pool must be up to date for the epoch first; the script sends the permissionless update itself when it has a payer key, otherwise run `node crank.mjs --no-rebalance`. |
+
+If a step fails half way (a wallet that goes quiet, a transaction that expires), run the script from step 4 or 8 again. It reads the chain, leaves out what is already done, and writes a fresh plan.
+
+#### Devnet rehearsal (5 Oct 2026, emulator + Solana Mobile's test wallet)
+
+A separate pool, [`devnet-phone-rehearsal.json`](devnet-phone-rehearsal.json): `AdqDPgeuvk3Zu4o7QwxLtsWjSJiMAryji5pfgeYD9Qck`. Manager `Fe4U9C…ViiG` and fee owner `5WqtFq…311t` were two builds of the test wallet, each with its own key. It has no validators (they are not needed to rehearse the manager steps) and 0.05 SOL in the reserve.
+
+| What | Signed by | Transaction |
+|---|---|---|
+| `Initialize` (through the page) | manager, in the wallet | `3eeaBh7zDuJBLNb1zw9mGG9hXBSAsnihXqdUfgAqogu2sm118HNLrGqEvKZJBrJcGGt6buXjuYZiFVsxUgiYNM1T` |
+| `SetFee` + `SetFundingAuthority` + `CreateTokenMetadata` (through the page) | manager, in the wallet | `3wb1BnBiXF4WNuxwJD6Du9vQ42gZhsxbyCDYv2JJpGYGBgqCxW6NvtuAPbrUSVi7tQpRWCsc6LyHft8e9hYJ2Vir` |
+| 0.01 SOL of stand-in rewards into the reserve, then the update: 0.01 OCEAN minted to the fee account | payer key (Mac) | `4EZMZiVV…BGmMU`, `zdd39QdU…D2m6Pd` |
+| Fee collection, 0.01 OCEAN → 0.01 SOL (through the page) | fee owner, in the wallet | `3sn32P1Nk8ZVypjVa4Uivf2JQrgfy31bhkDqfo9XuLcgsEXQayhaPfAjowiZCJXYTHz9kyBy1nHcysjr4tXff9jQ` |
+
+#### Dry run on the owner's real Seeker (5 Oct 2026, Seed Vault Wallet, devnet)
+
+A second separate pool, [`devnet-dry-run.json`](devnet-dry-run.json): `7SydaT6g1p16JXfuHAZwoYyf4f3thB6r75A5zSxFk4tA`, manager `AKzq…MS21` and fee owner `4Jb1…PMHq`, the two Seed Vault accounts chosen for mainnet. No validators, 0.05 SOL in the reserve.
+
+| What | Signed by (read back from the chain) | Transaction |
+|---|---|---|
+| `Initialize` | the manager account alone | `4gu6vP77t9zNuuFdUkGRAGGsan182UMYhg3DjUiDJjrFPtMjcSLWGxXT9JkcwdQWiPFgBEPfgg9iugBcGQxqdPWQ` |
+| `SetFee` + `SetFundingAuthority` + `CreateTokenMetadata` | the manager account alone | `129RiCtsNZLKjFpRbx4Vo7wQt5AEwDWQbvkqBWTjK4PgJRyFWmwCnKoi3mfdfU5rvjA16AiwJMJL8tMDpuHLSAmy` |
+| Fee collection, 0.01 OCEAN → 0.01 SOL | the fee owner alone | `rWD25ngMPv9cPXpVeCwhvS7vnuThFit6hcrdCbmciFXHT25ZCgRCvF4A4n33QfKGqSeeTxYqWwzkNuZNwwCSALS` |
+
+Learned on the phone:
+- **"Scam site detected. We blocked the transaction" means the wallet is on the wrong network.** With the Seed Vault Wallet on mainnet, a devnet transaction from our (already authorised) identity got that hard block, with only a Close button, even for a memo. With the wallet on Devnet the same build and identity signed normally. A never-seen identity got the clearer "Network mismatch" instead. Check the wallet's network first.
+- **Switching between the two accounts works:** Disconnect on the page, change the active account in the wallet, Connect again.
+- **The crank key (staker) pays for the update,** so it needs a little SOL before `crank.mjs` or `collect-fees.mjs` can bring the pool up to date.
+- `status.mjs` used to crash on a pool that was initialized but not yet seeded; fixed the same day.
+
+Not rehearsed: anything on mainnet, including the page's MAINNET gate with a real wallet.
 
 ## Risks
 
@@ -199,7 +281,7 @@ From appendix B, plus what this build found:
 - **The code can change under us.** A third-party 6-of-10 Squads multisig controls upgrades to the canonical program, and there were two urgent security releases in 7 months.
 - **Losses are never recovered.** With a 100% fee, any drop in pool value stays with parents. The studio can only make them whole by burning its own fee tokens.
 - **Slashing is not live** (SIMD-0212 is still under discussion).
-- **A stolen manager key** could block instant exits (by setting a SOL-withdraw authority) and set 100% deposit fees at once. The app passes a minimum tokens-out on every deposit. Withdrawal-fee increases are capped at 1.5× per change (plus +0.5 percentage points on v2.1.0) and wait 2 epoch boundaries, so pushing withdrawals from 0 to 100% takes ~408 epochs. The manager belongs on a multisig.
+- **A stolen manager key** could block instant exits (by setting a SOL-withdraw authority) and set 100% deposit fees at once. The app passes a minimum tokens-out on every deposit. Withdrawal-fee increases are capped at 1.5× per change (plus +0.5 percentage points on v2.1.0) and wait 2 epoch boundaries, so pushing withdrawals from 0 to 100% takes ~408 epochs. A multisig manager spreads this risk; the phone manager ([above](#phone-manager)) rests it on one seed phrase and one device.
 - **A leaked staker key** (it sits in GitHub secrets) can redelegate stake to a bad validator and lose the studio rewards. It cannot withdraw funds. Rotate it with `SetStaker` from the manager.
 - **If the studio disappears,** parents can still update the pool and withdraw: every needed instruction is permissionless or parent-signed.
 - **Parents carry SOL price risk.** SIMD-0550 (in review) would cut yield further.

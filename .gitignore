@@ -5,6 +5,7 @@ android/local.properties
 .DS_Store
 node_modules/
 pool/keys/
+pool/plans/
 tools/keys/
 *.keypair.json
 .public-mirror/
