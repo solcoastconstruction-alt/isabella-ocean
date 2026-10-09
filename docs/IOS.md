@@ -119,7 +119,8 @@ Buy, a failed purchase and its retry, a remembered purchase against one and two 
 Restore, and a code redeemed from each of the two screens.
 
 `TEST_RUNNER_ISABELLA_SNAPSHOTS=/some/folder` in front of that command also saves pictures: nine of
-the unlock path and thirteen of the first screen of every game (two more tests; skipped otherwise).
+the unlock path, and the first screen of every game plus each game in play (two more tests; skipped
+otherwise).
 
 Two simulators were made for this alone, so no other project's simulator is touched: **Isabella
 iPhone** (iPhone 17 Pro) and **Isabella iPad** (iPad A16), both iOS 26.5.
@@ -131,11 +132,27 @@ The whole game is sized by screen height, for wide phones. On an iPad's squarer 
   `@media (max-aspect-ratio: 16/10)` in `web/index.html` and `web/games/jigsaw/index.html`. Every
   phone is wider than 16:10, so phones are untouched: `node test/hub/hub.test.js` is still 142/142
   and the computed sizes at 874×402 are the old ones.
-- **Fine as they are:** Isabella in play and paused, the more-games screen, Coral Maze, Shell Match,
-  Sea Words, Treasure Blocks, Splash Dash, the unlock and grown-ups' screens.
+- **Fixed, found only once the games were pictured in play: Treasure Blocks drew its well about a
+  fifth of its size** (10-unit cells), because the layout kept 660 units clear for the side buttons
+  and a 4:3 screen is only 720 wide. `web/games/blocks/art.js` now keeps 480 clear when the screen is
+  under 880 units wide (below 16:10). Measured at 1376×1032, 1180×820 and 1133×744 in all three
+  modes: cells of 53 to 77 px, the well inside the screen, and none of 44 points round its edge
+  covered by a button. On a phone (874×402) the cells are the size they were.
+- **Fine as they are, menus and in play:** Isabella, the more-games screen, Bubble Party, Coral Maze,
+  Shell Match, Sea Words, Sea Jigsaw, Splash Dash, Sea Catch, the unlock and grown-ups' screens.
 - **Left for him to judge:** on the title screen the swimming Isabella passes behind the game
-  buttons; Bubble Party's and Sea Catch's level bubbles fill the width with a small margin (28 pt).
-- Only each game's first screen was looked at, not the games in play.
+  buttons; Bubble Party's and Sea Catch's level bubbles fill the width with a small margin (28 pt);
+  in Treasure Blocks the lowest ring of the row track touches the top of the right-arrow button.
+- Each game was pictured once in play, started through its debug hook. Nobody has played them on an
+  iPad.
+
+### App Store screenshots
+`listing/appstore/` holds ten pictures at each of Apple's two required sizes, `iphone-6.9/`
+(2868×1320) and `ipad-13/` (2752×2064), and `in-app-purchase-review.jpg`. They are the picture
+tests' output from two more simulators, **Isabella iPhone Max** (iPhone 17 Pro Max) and **Isabella
+iPad 13** (iPad Pro 13-inch), converted to JPEG because the web view's snapshots carry an alpha
+channel, which Apple refuses. To remake them: run the two picture tests on each simulator with
+`TEST_RUNNER_ISABELLA_SNAPSHOTS` set, then convert with `sips -s format jpeg`.
 
 ### What we learned the hard way (9 Oct 2026, Xcode 26.6)
 - **Xcode's local store refuses an app that is "not installed for development".** A Simulator build
@@ -154,8 +171,8 @@ The whole game is sized by screen height, for wide phones. On an iPad's squarer 
   40 s for the sandbox to give up. Under test the app leaves `billing.start()` to the tests.
 
 ## Not proven yet
-- **Nothing has run on a real iPhone or iPad.** Tilt steering, sound, the home-indicator and
-  Dynamic Island edges, and the eight other games in play on an iPad all need his eyes.
+- **Nothing has run on a real iPhone or iPad.** Tilt steering, sound, and the home-indicator and
+  Dynamic Island edges all need his eyes and hands.
 - **A real code.** No offer code has been redeemed anywhere.
 - **The real App Store.** Every purchase check above is against Xcode's local store. A real purchase,
   a real Restore (which asks for the Apple Account password) and a retry after a real failure need
@@ -167,6 +184,7 @@ His, in App Store Connect (the full list with sources: `.local/reports/6-app-sto
 the Paid Apps Agreement with tax and bank details, the Small Business Program, the app record and
 bundle id, the in-app purchase, the Kids Category choice and age band, App Privacy answers.
 
-Ours: the listing text is drafted in `listing/appstore-draft.md`; screenshots at Apple's sizes; an
-Archive and upload. (The pages the app links to, `isabellaocean.app/apple/…`, have been live since
+Ours: nothing is waiting on us. The listing text is in `listing/appstore-draft.md`, the screenshots
+are in `listing/appstore/`, and he has a step-by-step page for App Store Connect (HANDOVER has its
+address). The Archive and upload are his, from Xcode. (The pages the app links to, `isabellaocean.app/apple/…`, have been live since
 9 Oct.)

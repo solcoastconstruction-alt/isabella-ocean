@@ -48,7 +48,7 @@ Every keyword is something a game in `docs/GAMES.md` is or does. "preschool" res
 
 ---
 
-Isabella Ocean is nine gentle ocean games for children aged about 3 to 9. Your child never needs to read. Every game is played with taps, drags, swipes or a tilt of the device.
+Isabella Ocean is nine gentle ocean games for children aged about 3 to 8. Your child never needs to read. Every game is played with taps, drags, swipes or a tilt of the device.
 
 THE NINE GAMES
 • Isabella the Mermaid (ages 5 to 8): Isabella swims after your child's finger, dodges sea creatures, finds the key and opens the treasure chest. 20 levels in two worlds.
@@ -86,7 +86,7 @@ Support: support@isabellaocean.app
 
 ---
 
-First release. Nine ocean games for children aged about 3 to 9: eight free, plus the free first world of Isabella the Mermaid. A grown-up can unlock World 2 with a one-time purchase. No ads, no accounts, nothing collected.
+First release. Nine ocean games for children aged about 3 to 8: eight free, plus the free first world of Isabella the Mermaid. A grown-up can unlock World 2 with a one-time purchase. No ads, no accounts, nothing collected.
 
 ---
 
@@ -191,13 +191,31 @@ These are the App Store build's own pages (`site/apple/`, docs/SITE.md), live si
    in `ios/IsabellaOceanTests/Products.storekit` if the tests should match.
 4. **Motion.** The code grants the game the motion sensor without a prompt. If that changes and a
    prompt appears, say in the SPLASH DASH note when it appears.
-5. **The age band.** This draft says "about 3 to 8", as `listing/listing.md` does. The brief for the
-   iOS build said about 4 to 8, and `docs/GAMES.md` says the ages of the four newest games are
-   estimates.
+5. **Ages and the Kids band (settled 9 Oct).** The listing says "about 3 to 8", his word. Apple's
+   Kids Category takes one band only; he left the choice to the chat, which picked **"6–8"**, because
+   six of the nine games are marked 5 to 8 and it is the band a 3-to-8 game overlaps most. It
+   cannot be changed after approval, so it is his last look in App Store Connect.
 6. **"The app makes no network requests."** Stated as the brief gives it. The notes add that Apple's
    own purchase system connects when a grown-up looks at, buys or restores the purchase, so a
    reviewer watching traffic is not surprised.
-7. **Not drafted, because the repo cannot answer them:** the seller name, the copyright line, the
-   age-rating answers, the Kids Category age band, the purchase's review screenshot, and the privacy
-   answers in App Store Connect (the brief and `ios/IsabellaOcean/PrivacyInfo.xcprivacy` both support
-   "Data Not Collected").
+7. **Not drafted, because the repo cannot answer them:** the seller name and the copyright line
+   (they follow the legal name the Apple account is in), the age-rating answers (None or No to every
+   question: the app has no ads, chat, web access, user content, gambling or violence) and the
+   privacy answers in App Store Connect ("Data Not Collected", which the brief and
+   `ios/IsabellaOcean/PrivacyInfo.xcprivacy` both support).
+8. **Governing law.** The Terms add no clause of their own (his word, 9 Oct: whatever gets it done).
+   The app is licensed under Apple's standard licence agreement, which has its own, and the Terms
+   say that nothing in them limits rights consumer law gives.
+
+## Screenshots (made 9 Oct 2026, in `listing/appstore/`; a copy is in `~/Desktop/isabella-ocean-appstore/`)
+
+Taken from the app itself in the Simulator by the picture tests (docs/IOS.md), at Apple's two
+required sizes. Ten each, in this order: the title, Isabella the Mermaid, Bubble Party, Coral Maze,
+Sea Jigsaw, Splash Dash, Sea Words, Shell Match, Treasure Blocks, Sea Catch. No picture shows a
+price or World 2.
+
+| Folder | For | Pixels |
+|---|---|---|
+| `iphone-6.9/` | iPhone 6.9-inch display | 2868 × 1320 |
+| `ipad-13/` | iPad 13-inch display | 2752 × 2064 |
+| `in-app-purchase-review.jpg` | the in-app purchase's review screenshot (the unlock screen; never shown on the store) | 2868 × 1320 |

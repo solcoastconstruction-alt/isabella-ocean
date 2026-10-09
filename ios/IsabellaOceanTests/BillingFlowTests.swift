@@ -342,8 +342,24 @@ final class BillingFlowTests: XCTestCase {
                 return try await self.flag("document.readyState === 'complete' && location.pathname.includes('/\(game)/')")
             }
             try await save("\(game)-1-first-screen", after: 2)
+            // Then the game in play, started through its own debug hook (each game has one).
+            if let (start, wait) = inPlay[game] {
+                _ = try await js(start + "; return true")
+                try await save("\(game)-2-in-play", after: wait)
+            }
         }
     }
+
+    private let inPlay: [String: (String, Double)] = [
+        "pop": ("__popDebug.start(2)", 5),
+        "maze": ("__mazeDebug.start(12, 'easy')", 2.5),
+        "match": ("__matchDebug.start(4)", 2.5),
+        "words": ("__wordsDebug.start('medium')", 2.5),
+        "blocks": ("__blocksDebug.start('medium'); for (let i = 0; i < 7; i++) { for (let k = 0; k < (i * 2) % 5; k++) __blocksDebug.act(i % 2 ? 'left' : 'right'); __blocksDebug.act('drop'); __blocksDebug.advance(1.2); }", 1.5),
+        "jigsaw": ("__jigsawDebug.start('medium', 2, true) || __jigsawDebug.start('easy', 4, true); __jigsawDebug.solve(8)", 3),
+        "dash": ("__dashDebug.start(3)", 6),
+        "catch": ("__catchDebug.start(3)", 6),
+    ]
 
     // MARK: - Helpers
 

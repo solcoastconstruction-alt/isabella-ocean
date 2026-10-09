@@ -782,7 +782,11 @@
   // the next piece. The round's coins are counted in the top right corner. (The four big buttons are in index.html.)
   const TOPM = 18, CMAX = { easy: 56, medium: 46, hard: 39 };
   function layout(mode, cols, rows, goal) {
-    let c = Math.min(CMAX[mode] || 56, (H - 2 * TOPM) / rows, (VW - 660) / cols);
+    // The four big buttons take the bottom corners, about 220 wide each side. On a phone the well keeps clear of
+    // them with room to spare (660). A squarer screen (a tablet; VW is under 880 only below 16:10) has no such
+    // room, so the well keeps just clear of them (480) instead of shrinking to almost nothing.
+    const side = VW < 880 ? 480 : 660;
+    let c = Math.min(CMAX[mode] || 56, (H - 2 * TOPM) / rows, (VW - side) / cols);
     c = Math.max(8, Math.floor(c * s) / s);   // a whole number of screen pixels, so the blocks sit edge to edge
     const w = c * cols, h = c * rows, x = Math.round(((VW - w) / 2) * s) / s, y = Math.round(((H - h) / 2) * s) / s;
     const slotR = goal > 8 ? 11 : 13;
