@@ -48,7 +48,7 @@ Every keyword is something a game in `docs/GAMES.md` is or does. "preschool" res
 
 ---
 
-Isabella Ocean is nine gentle ocean games for children aged about 3 to 8. Your child never needs to read. Every game is played with taps, drags, swipes or a tilt of the device.
+Isabella Ocean is nine gentle ocean games for children aged about 3 to 9. Your child never needs to read. Every game is played with taps, drags, swipes or a tilt of the device.
 
 THE NINE GAMES
 • Isabella the Mermaid (ages 5 to 8): Isabella swims after your child's finger, dodges sea creatures, finds the key and opens the treasure chest. 20 levels in two worlds.
@@ -86,7 +86,7 @@ Support: support@isabellaocean.app
 
 ---
 
-First release. Nine ocean games for children aged about 3 to 8: eight free, plus the free first world of Isabella the Mermaid. A grown-up can unlock World 2 with a one-time purchase. No ads, no accounts, nothing collected.
+First release. Nine ocean games for children aged about 3 to 9: eight free, plus the free first world of Isabella the Mermaid. A grown-up can unlock World 2 with a one-time purchase. No ads, no accounts, nothing collected.
 
 ---
 
@@ -138,8 +138,7 @@ Support: support@isabellaocean.app
 
 ## Links
 
-These are the App Store build's own pages (`site/apple/`, docs/SITE.md). **They are not live until the
-site is deployed.**
+These are the App Store build's own pages (`site/apple/`, docs/SITE.md), live since 9 Oct 2026.
 
 - Privacy Policy URL: https://isabellaocean.app/apple/privacy
 - Support URL: https://isabellaocean.app/apple/support
@@ -186,8 +185,8 @@ site is deployed.**
    (pictures in `.local/ios-shots/`): Play, the pink arrow, the gold padlocks, "Ask a grown-up", the
    gate, "Unlock for $4.99", "Restore purchase", "Redeem a code", the bottom-left grown-ups button.
    Not on a real device yet.
-2. **Deploy the site before submitting.** The app's links and the two URLs above point at
-   `isabellaocean.app/apple/…`, which is written and tested but not live.
+2. **The site is deployed** (9 Oct): the app's links and the two URLs above answer on
+   `isabellaocean.app/apple/…`.
 3. **Family Sharing is on** (his yes, 9 Oct): turn it on for the purchase in App Store Connect, and
    in `ios/IsabellaOceanTests/Products.storekit` if the tests should match.
 4. **Motion.** The code grants the game the motion sensor without a prompt. If that changes and a

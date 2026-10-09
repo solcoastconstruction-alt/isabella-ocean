@@ -14,7 +14,7 @@ and no chain code anywhere in it.
 | Devices | iPhone and iPad, landscape only, iOS 16.4 or later (a code for a one-time purchase needs 16.3) |
 | Team | `4LU8AK735T` (his existing Apple Developer account), automatic signing |
 | In-app purchase | `app.isabellaocean.mobile.world2`, non-consumable ("World 2"), Family Sharing on (his yes on 9 Oct) |
-| Category | Kids Category (his yes on 9 Oct; the age band is still to choose) |
+| Category | Kids Category (his yes on 9 Oct). He gave the ages as 3 to 9; Apple's form takes one band only ("5 and under", "6–8" or "9–11"), still to choose |
 | Flavor | `window.IsabellaFlavor = 'appstore'` |
 
 ## What ships inside: `scripts/assemble-web.sh`
@@ -167,7 +167,6 @@ His, in App Store Connect (the full list with sources: `.local/reports/6-app-sto
 the Paid Apps Agreement with tax and bank details, the Small Business Program, the app record and
 bundle id, the in-app purchase, the Kids Category choice and age band, App Privacy answers.
 
-Ours: **deploy the site** (his word): the app's Privacy and Terms links point at
-`isabellaocean.app/apple/…`, pages that are written and tested but not live, so today those links
-give a 404. The listing text is drafted in `listing/appstore-draft.md`; screenshots at Apple's
-sizes; an Archive and upload.
+Ours: the listing text is drafted in `listing/appstore-draft.md`; screenshots at Apple's sizes; an
+Archive and upload. (The pages the app links to, `isabellaocean.app/apple/…`, have been live since
+9 Oct.)
