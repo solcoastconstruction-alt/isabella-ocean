@@ -198,8 +198,13 @@ These are the App Store build's own pages (`site/apple/`, docs/SITE.md), live si
 6. **"The app makes no network requests."** Stated as the brief gives it. The notes add that Apple's
    own purchase system connects when a grown-up looks at, buys or restores the purchase, so a
    reviewer watching traffic is not surprised.
-7. **Not drafted, because the repo cannot answer them:** the seller name and the copyright line
-   (they follow the legal name the Apple account is in), the age-rating answers (None or No to every
+7. **The seller, the developer name and the copyright line (settled 10 Oct; the names are in the
+   private docs, TODO E4).** The seller and the copyright line follow the legal name the Apple
+   membership is in. The developer name shown under the app is a registered trading name of that
+   entity: Apple allows one for an organisation account only, typed into the "Company Name" field
+   of the pop-up that creates the **first** app record, and never editable after. So no app record
+   is created until the membership is an organisation.
+   **Not drafted, because the repo cannot answer them:** the age-rating answers (None or No to every
    question: the app has no ads, chat, web access, user content, gambling or violence) and the
    privacy answers in App Store Connect ("Data Not Collected", which the brief and
    `ios/IsabellaOcean/PrivacyInfo.xcprivacy` both support).
