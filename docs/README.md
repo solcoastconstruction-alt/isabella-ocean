@@ -10,6 +10,7 @@ launch and hackathon checklist. Both are private, so they're not in the public m
 | [POOL.md](POOL.md) | Our SPL stake pool: settings, devnet addresses, crank, commands, evidence, mainnet |
 | [RPC-RELAY.md](RPC-RELAY.md) | The Cloudflare Worker that keeps the mainnet RPC key out of the app: allow-list, limits, deploying, rotating the key (built, not deployed) |
 | [ANDROID.md](ANDROID.md) | The two app flavors, building, signing, installing safely, DevTools, the emulator |
+| [IOS.md](IOS.md) | The App Store build for iPhone and iPad: what it packs (`scripts/assemble-web.sh`, `web-iap/`), the Apple in-app purchase, how ownership is decided, testing in the Simulator, what is not proven yet |
 | [SITE.md](SITE.md) | isabellaocean-app.pages.dev: wallet identity (`assetlinks.json`), legal pages, deploying |
 | [DEMO.md](DEMO.md) | Demo videos, the recording and editing tools, devnet SOL, the deck, notes for judges |
 | [TESTING.md](TESTING.md) | Every test command, what it checks, its last result and its port |

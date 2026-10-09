@@ -97,3 +97,47 @@ test('fetch: the hackathon address is untouched, APK and devnet wording included
   const junk = await get('https://isabellaocean-app.pages.dev/definitely-not-here');
   assert.equal(junk.status, 200);
 });
+
+// ---- The App Store build's pages (site/apple/): they stand alone ----
+const APPLE_PAGES = ['apple/privacy.html', 'apple/terms.html', 'apple/support.html'];
+const CHAIN_WORDS = /solana|seeker|wallet|\bSOL\b|usdc|stak(e|ed|ing)\b|crypto|blockchain|token|jupiter|dapp|android|google/i;
+
+test('the product domain serves the App Store pages', () => {
+  for (const ok of ['/apple/privacy', '/apple/privacy.html', '/apple/terms', '/apple/terms.html', '/apple/support', '/apple/support.html']) {
+    assert.ok(isStorePath(ok), `${ok} should be served`);
+  }
+  for (const no of ['/apple', '/apple/', '/apple/index.html', '/apple/other']) assert.ok(!isStorePath(no), `${no} should be 404`);
+});
+
+test('the App Store pages say nothing about wallets or the chain, and pass through unchanged', () => {
+  for (const name of APPLE_PAGES) {
+    const html = page(name);
+    assert.doesNotMatch(html, CHAIN_WORDS, name);
+    assert.doesNotMatch(html, DEVNET_WORDS, name);
+    assert.equal(rewriteStoreHtml(html), html, `${name} was rewritten`);
+  }
+  // The words are really looked for: the Seeker pages are full of them.
+  assert.match(page('terms.html'), CHAIN_WORDS);
+});
+
+test('nothing on an App Store page leads to the rest of the site', () => {
+  const local = new Set(['privacy.html', 'terms.html', 'support.html', '../icon.png', '../style.css']);
+  const outside = ['https://www.apple.com/', 'https://reportaproblem.apple.com/', 'mailto:support@isabellaocean.app'];
+  let links = 0;
+  for (const name of APPLE_PAGES) {
+    for (const [, href] of page(name).matchAll(/(?:href|src)="([^"]*)"/g)) {
+      links += 1;
+      assert.ok(local.has(href) || outside.some((prefix) => href.startsWith(prefix)), `${name} links to ${href}`);
+    }
+  }
+  assert.ok(links >= 15, `only ${links} links were found: the sweep is not seeing the pages`);
+});
+
+test('the iOS app opens only those pages', () => {
+  const root = path.resolve(site, '..');
+  const paywall = readFileSync(path.join(root, 'web-iap/paywall.js'), 'utf8');
+  assert.match(paywall, /const SITE = 'https:\/\/isabellaocean\.app\/apple\/';/);
+  for (const [, tail] of paywall.matchAll(/\$\{SITE\}([a-z]+)/g)) assert.ok(APPLE_PAGES.includes(`apple/${tail}.html`), `the app links to ${tail}, which is not a page`);
+  const native = readFileSync(path.join(root, 'ios/IsabellaOcean/GameViewController.swift'), 'utf8');
+  assert.match(native, /static let sitePath = "\/apple\/"/);
+});

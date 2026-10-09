@@ -1,0 +1,38 @@
+{
+  "identifier" : "15AB0C7E",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6753000001",
+      "localizations" : [
+        {
+          "description" : "Levels 11 to 20 with Isabella",
+          "displayName" : "World 2",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.isabellaocean.mobile.world2",
+      "referenceName" : "World 2",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -91,6 +91,14 @@
   .pg-l { position:fixed; left:5vw; top:50%; transform:translateY(-50%); }
   .pg-r { position:fixed; right:5vw; top:50%; transform:translateY(-50%); }
   .pg-l:active, .pg-r:active { transform:translateY(-50%) scale(0.95); }
+  /* Squarer screens (tablets; every phone is wider than 16:10): sized by height alone, the level map
+     would reach under the page arrows. Size it by width there and move the arrows out a little. */
+  @media (max-aspect-ratio: 16/10) {
+    #grid { grid-template-columns:repeat(5, 11vw); gap:4vh 3vw; }
+    .lvl { width:11vw; height:11vw; }
+    .pg-l { left:2.5vw; }
+    .pg-r { right:2.5vw; }
+  }
   .world { position:fixed; top:5vh; left:0; right:0; text-align:center; font-size:8vh; font-weight:900; color:#fff; pointer-events:none; }
   .dots { position:fixed; bottom:5vh; left:0; right:0; display:flex; gap:2vh; justify-content:center; pointer-events:none; }
   .dots span { width:2.6vh; height:2.6vh; border-radius:50%; background:rgba(255,255,255,0.45); }

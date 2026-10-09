@@ -55,6 +55,13 @@ SHA-256 to the list (keep the debug one for test builds) and redeploy with `scri
   - a purchase never expires.
   - The pages also note the devnet testing period.
 - **Update the dates** at the top of each page whenever the content changes.
+- **Corrected 9 Oct 2026 (in the repo; not deployed until he says so):** the Privacy policy said "We do not run that server", which stopped being true when the store build moved to our relay on 5 Oct. It now names the relay (`rpc.isabellaocean.app`, no log, a one-minute count per internet address), the provider (Helius, which never sees the phone's address) and Jupiter (which sees the wallet's address and the phone's). A "This website and email" section was added. The home page's contact is now `support@isabellaocean.app`, and "That is the only cost" now mentions network fees. Both pages are dated 9 October 2026.
+
+## The App Store build's pages: `site/apple/` (9 Oct 2026, not deployed yet)
+`apple/privacy.html`, `apple/terms.html` and `apple/support.html` are what the iOS app links to and what App Store Connect needs (Privacy Policy URL, Support URL). They describe that build only: nothing collected, no network use, one Apple in-app purchase, refunds through Apple, Apple's standard licence, codes.
+- **They stand alone.** Nothing on them links to the rest of the site, so nobody following a link from the iOS app is two taps from the wallet unlock. `test/site/worker.test.mjs` checks that every link on them is one of the three pages, Apple, or the support address; that none of them says anything about wallets or the chain; and that the iOS app's links and its allow-list point only at `/apple/`.
+- The worker serves them on the product domain (`STORE_PATHS`).
+- **Still open on them (his):** who "we" is (the legal name the App Store will show as the seller) and the governing law. The pages say neither today.
 
 ## The product domain (isabellaocean.app), added 7 Oct 2026
 

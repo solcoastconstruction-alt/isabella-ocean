@@ -12,6 +12,8 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | `node rpc-relay/test/relay.test.mjs` | RPC relay guards: allow-list, body and batch caps, CORS, rate limit, no provider URL in any answer (RPC-RELAY.md) | 29/29 (5 Oct) | – |
 | `node rpc-relay/test/app-methods.test.mjs` | The relay's allow-list equals the RPC methods the app's scripts call; no send, no subscription | 10/10 (5 Oct) | – |
 | `node rpc-relay/test/mutants.mjs` | Breaks copies of the relay and the app on purpose (about a minute) | 45/45 caught (5 Oct) | – |
+| `cd ios && xcodebuild test -project IsabellaOcean.xcodeproj -scheme IsabellaOcean -destination 'platform=iOS Simulator,name=Isabella iPhone' -derivedDataPath ../.local/ios-build` | The iOS app, inside the Simulator against Xcode's local App Store: what the build packed (no wallet or chain code), saves across page changes, the gate, buying, a refund, Ask to Buy, a failed purchase, a remembered purchase, Restore (IOS.md) | 13/13 on iPhone 17 Pro and on iPad A16 (9 Oct; the first 11 passed six runs in a row); three defects put into `Billing.swift` on purpose were each caught | – |
+| `sh scripts/assemble-web.sh appstore .local/tmp/web-appstore` | Assembles the App Store web bundle and fails if any wallet or chain wording is left in it | 55 files, clean (9 Oct) | – |
 | `node --test test/games/match/logic.test.js` | Shell Match rules | 10/10 | – |
 | `node test/games/pop/verify.js` | Bubble Party rules, level table, old-save conversion | 25/25 | – |
 | `node test/games/pop/browser.js` | Bubble Party with real touch drags | 86/86 | 9455 |

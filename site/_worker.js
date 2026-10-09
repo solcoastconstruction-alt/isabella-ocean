@@ -11,7 +11,9 @@ const STORE_HOSTS = new Set(['isabellaocean.app', 'www.isabellaocean.app']);
 // What the product domain serves; everything else is 404. Keep in step with site/.
 const STORE_PATHS = new Set(['/', '/index.html', '/privacy', '/privacy.html', '/terms', '/terms.html',
   '/icon.png', '/icon.svg', '/style.css', '/ocean-pass.json', '/isabella-ocean-deck.pdf',
-  '/.well-known/assetlinks.json']);
+  '/.well-known/assetlinks.json',
+  // The App Store build's own pages. They stand alone: nothing on them links to the rest of the site.
+  '/apple/privacy', '/apple/privacy.html', '/apple/terms', '/apple/terms.html', '/apple/support', '/apple/support.html']);
 const STORE_PREFIXES = ['/img/'];
 
 // Devnet-only passages, removed from the product domain's pages. test/site/worker.test.mjs checks that

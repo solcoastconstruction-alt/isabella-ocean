@@ -18,3 +18,5 @@ tools/keys/
 .env*
 !.env.example
 .local/
+xcuserdata/
+*.xcuserstate

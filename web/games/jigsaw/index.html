@@ -70,6 +70,7 @@
 
   /* ten pictures, five to a row, to the right of the column of round buttons; they shrink on squarer screens so the row still fits */
   #levels { padding-left:21vh; box-sizing:border-box; }
+  @media (max-aspect-ratio: 16/10) { #grid { --w:calc((100vw - 33vh) / 5.32) !important; } }   /* squarer screens (tablets): the same margin on the right as on the left */
   #grid { --w:min(36vh, calc((100vw - 25vh) / 5.32)); display:grid; grid-template-columns:repeat(5, var(--w)); gap:calc(var(--w) * 0.075) calc(var(--w) * 0.08); margin-top:17vh; }
   .lvl { width:var(--w); position:relative; display:flex; flex-direction:column; align-items:center; }
   .lvl:active .pic { transform:translateY(.8vh); }
