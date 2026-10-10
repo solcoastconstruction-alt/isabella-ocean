@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Rainbow Slide: the title-screen button's picture, in the style of the other symbols in web/index.html (a 24 x 24 box,
+       white shapes with a touch of pink and gold, so it reads on any button colour). Copy the <symbol> below into the <defs>
+       of web/index.html, beside the others, and use it as
+         <button id="slideBtn" class="btn game ..." aria-label="Rainbow Slide"><svg viewBox="0 0 24 24"><use href="#i-slide"/></svg></button>
+       A rainbow arc (white, with one pink band), a little cloud at its foot and a gold sparkle. -->
+  <symbol id="i-slide" viewBox="0 0 24 24"><path d="M2.4 19.6C2.4 11.2 7 5.4 13.2 5.4s10.4 5.8 10.4 14.2" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><path d="M6.2 19.6C6.2 13.4 9.2 9.2 13.2 9.2s7 4.2 7 10.4" fill="none" stroke="#ff6fb0" stroke-width="2.3" stroke-linecap="round"/><path d="M9.9 19.6c0-3.1 1.4-5.2 3.3-5.2s3.3 2.1 3.3 5.2" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round"/><path d="M1.2 22.2c-.9-2.1 1.2-3.7 3-2.8 1.1-2 4.1-1.4 4.2 1.2 1.7-.1 2.5 1.7 1.5 2.6H2.2c-.5 0-.8-.1-1-.3z" fill="#fff" stroke="#fff" stroke-width=".5" stroke-linejoin="round"/><path d="M20.4 .8l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#ffd23f"/><circle cx="13.2" cy="2.8" r=".9" fill="#fff"/></symbol>
+  <use href="#i-slide"/>
+</svg>

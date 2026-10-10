@@ -1,0 +1,169 @@
+<!doctype html>
+<!-- Firefly Numbers: a counting game for ages 3-8 (no reading, no timers). A moonlit glade: fireflies drift about,
+     and Isabella the Fairy holds a glass jar whose label shows a number as a numeral AND as that many dots.
+     Tap fireflies into the jar until it holds the number. Medium and Hard add ("3 + 2") and, on Hard, take away.
+     Three modes (one, two or three sparkles on a wand), 20 levels each over two pages, stars, a flower per jar and a
+     treasure chest at the end of every level.
+     Standalone page; the hub links here and the home button / Android back button return to ../../index.html. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Firefly Numbers</title>
+<link rel="icon" href="data:,">
+<style>
+  /* Buttons, outlines, level bubbles and the results card follow Bubble Party and Sea Jigsaw. */
+  :root { --gold1:#fff1a0; --gold2:#ffc21a; --gold3:#d98a00; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#141a4f; touch-action:none;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+    font-family: system-ui, Roboto, sans-serif; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  .screen { position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; }
+  .screen.on { display:flex; }
+  button { font:inherit; color:inherit; border:none; padding:0; cursor:pointer; background:none; touch-action:manipulation; }
+  .btn { width:24vh; height:24vh; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 35% 28%, var(--gold1), var(--gold2) 55%, var(--gold3));
+    box-shadow:0 1.3vh 0 #a86400, 0 2.5vh 4vh rgba(0,0,0,0.3); transition:transform .08s; }
+  .btn:active { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #a86400; }
+  .btn svg { width:56%; height:56%; fill:#fff; filter:drop-shadow(0 .4vh 0 rgba(150,80,0,0.6)); }
+  .btn.md { width:19vh; height:19vh; }
+  .btn.sm { width:15vh; height:15vh; }
+  .btn.pink { background:radial-gradient(circle at 35% 28%, #ffd1ea, #ff6fb0 55%, #d63384); box-shadow:0 1.3vh 0 #9c1f5c, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.blue { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); box-shadow:0 1.3vh 0 #145f8a, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.pink svg, .btn.blue svg { filter:drop-shadow(0 .4vh 0 rgba(0,0,0,0.25)); }
+  .row { display:flex; gap:4vh; align-items:center; justify-content:center; }
+  /* Outlines are stacked drop-shadows (-webkit-text-stroke left stray lines inside letters on the Seeker). */
+  .ol-brown { filter:drop-shadow(.6vh 0 0 #b0480c) drop-shadow(-.6vh 0 0 #b0480c) drop-shadow(0 .6vh 0 #b0480c) drop-shadow(0 -.6vh 0 #b0480c) drop-shadow(0 1vh 0 rgba(120,30,0,0.35)); }
+  .ol-navy { filter:drop-shadow(.35vh 0 0 rgba(0,40,80,0.75)) drop-shadow(-.35vh 0 0 rgba(0,40,80,0.75)) drop-shadow(0 .35vh 0 rgba(0,40,80,0.75)) drop-shadow(0 -.35vh 0 rgba(0,40,80,0.75)); }
+
+  /* home: a 15vh disc inside a 19vh touch area, top left, on every screen */
+  #home { position:fixed; top:2vh; left:max(2.5vw, env(safe-area-inset-left)); width:19vh; height:19vh; display:flex; align-items:center; justify-content:center; z-index:10; }
+  #home .btn { pointer-events:none; }
+  #home:active .btn { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #145f8a; }
+
+  /* the menu: the name and the three modes along the top, ten levels, page arrows and dots */
+  .title { position:fixed; top:.5vh; left:24vh; right:min(36vh, 19vw); height:21vh; display:flex; align-items:center; justify-content:center; gap:min(3vh, 1.6vw); pointer-events:none; }
+  .title .t1 { display:inline-block; pointer-events:auto; font-size:min(10vh, 4.6vw); font-weight:900; letter-spacing:.3vh; line-height:1.05; white-space:nowrap; margin-right:min(2vh, 1vw);
+    background:linear-gradient(180deg,#fff7b0,#ffd23f 45%,#ff9f1c); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  /* the mode, in pictures: a wand with one sparkle, two, three. The one in play is bright, bigger and ringed in gold. */
+  .mode { width:19vh; height:19vh; flex:none; display:flex; align-items:center; justify-content:center; pointer-events:auto; }
+  .mode .disc { width:15.5vh; height:15.5vh; border-radius:50%; display:flex; align-items:center; justify-content:center; box-sizing:border-box;
+    border:.6vh solid rgba(255,255,255,0.55); box-shadow:0 1vh 0 rgba(0,20,60,0.4); transition:transform .15s, filter .15s; filter:saturate(0.35) brightness(0.82); opacity:.85; }
+  .mode .disc svg { width:80%; height:80%; }
+  #mode-easy .disc { background:radial-gradient(circle at 35% 28%, #dafff5, #2ec4a6 55%, #138a74); }
+  #mode-medium .disc { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); }
+  #mode-hard .disc { background:radial-gradient(circle at 35% 28%, #f4e3ff, #b46cf0 55%, #7a2fc0); }
+  .mode.on .disc { filter:none; opacity:1; transform:scale(1.12); border-color:#fff; box-shadow:0 0 0 .8vh rgba(255,210,63,0.95), 0 1.3vh 0 rgba(0,20,60,0.45); }
+  .mode:active .disc { transform:scale(1.04) translateY(.8vh); }
+  .pill { position:fixed; top:4vh; right:max(3vh, env(safe-area-inset-right)); display:flex; align-items:center; gap:1.2vh; padding:1.4vh 3vh 1.4vh 2vh;
+    border-radius:7vh; background:rgba(255,255,255,0.92); color:#c77700; font-size:5.5vh; font-weight:900; line-height:1; box-shadow:0 1vh 0 rgba(0,20,60,0.35); pointer-events:none; }
+  .pill svg { width:6.5vh; height:6.5vh; }
+  @media (max-aspect-ratio: 18/10) { .title .t1 { font-size:min(8vh, 3.4vw); } }
+  #menu { padding-top:19vh; box-sizing:border-box; }
+  #grid { --w:min(23vh, calc((100vw - 56vh) / 5.5)); display:grid; grid-template-columns:repeat(5, var(--w)); gap:calc(var(--w) * 0.16) calc(var(--w) * 0.16); }
+  .lvl { width:var(--w); height:var(--w); border-radius:50%; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 1vh 0 rgba(0,20,60,0.5), inset 0 -1.5vh 3vh rgba(0,0,0,0.2), inset 0 1.5vh 2vh rgba(255,255,255,0.45); border:.6vh solid #fff; }
+  .lvl:active { transform:translateY(.8vh); }
+  .lvl .num { font-size:calc(var(--w) * 0.42); font-weight:900; color:#fff; line-height:1; }
+  .lvl .st { display:flex; gap:.3vh; margin-top:.4vh; }
+  .lvl .st svg { width:calc(var(--w) * 0.2); height:calc(var(--w) * 0.2); }
+  .lvl.locked { filter:grayscale(0.8) brightness(0.85); }
+  .lvl.locked .num, .lvl.locked .st { display:none; }
+  .lvl .lock { width:calc(var(--w) * 0.38); height:calc(var(--w) * 0.38); fill:#fff; display:none; }
+  .lvl.locked .lock { display:block; }
+  .lvl.shake { animation:shake .4s; }
+  .lvl.next { animation:bob 1.6s ease-in-out infinite; border-color:#ffd23f; }
+  @keyframes bob { 50% { transform:translateY(-1.4vh) scale(1.04); } }
+  @keyframes shake { 20%,60% { transform:translateX(-1.5vh); } 40%,80% { transform:translateX(1.5vh); } }
+  /* page arrows: a full 19vh touch area each, either side of the ten levels (below them on squarer screens) */
+  .arrow { position:fixed; top:46vh; width:19vh; height:19vh; display:flex; align-items:center; justify-content:center; z-index:5; }
+  .arrow .btn { pointer-events:none; }
+  .arrow:active .btn { transform:translateY(1vh) scale(0.97); }
+  #prev { left:max(2vw, env(safe-area-inset-left)); }
+  #next { right:max(2vw, env(safe-area-inset-right)); }
+  .arrow.off { visibility:hidden; }
+  .arrow svg { width:60%; height:60%; }
+  #dots { display:flex; gap:2.4vh; margin-top:3vh; pointer-events:none; }
+  #dots i { width:2.6vh; height:2.6vh; border-radius:50%; background:rgba(255,255,255,0.4); }
+  #dots i.on { background:#ffd23f; transform:scale(1.4); box-shadow:0 0 1.5vh rgba(255,210,63,0.9); }
+  @media (max-aspect-ratio: 16/10) {   /* squarer screens (an iPad): the name on its own line, the modes under it, the arrows below the levels */
+    .title { height:auto; flex-wrap:wrap; align-content:flex-start; row-gap:.4vh; }
+    .title .t1 { flex-basis:100%; text-align:center; margin:0; font-size:7vh; }
+    #menu { padding-top:28vh; justify-content:flex-start; }
+    #grid { --w:min(20vh, calc((100vw - 8vh) / 5.5)); }
+    .arrow { top:auto; bottom:2vh; }
+  }
+
+  /* results: a card off to the right, so the open chest and Isabella stay in view on the left */
+  #results { background:rgba(0,10,40,0.2); }
+  .card { position:fixed; left:68%; top:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,0.93); border-radius:6vh; padding:5vh 5vh 6vh;
+    display:flex; flex-direction:column; align-items:center; gap:5vh; box-shadow:0 2vh 0 rgba(0,20,60,0.3); border:.8vh solid #ffd23f; }
+  .bigstars { display:flex; gap:3vh; }
+  .bigstars svg { width:17vh; height:17vh; transform:scale(0); }
+  .bigstars svg.pop { animation:pop .5s cubic-bezier(.3,1.8,.5,1) forwards; }
+  @keyframes pop { to { transform:scale(1); } }
+
+  /* held upright? (the Android app is always landscape) */
+  #rotate { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:#141a4f; z-index:20; }
+  #rotate svg { width:40vw; height:40vw; fill:#fff; animation:turn 2s ease-in-out infinite; }
+  @keyframes turn { 0%,25% { transform:rotate(0); } 60%,100% { transform:rotate(-90deg); } }
+  @media (orientation: portrait) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 2.5 1.5 12H5v9h5.5v-6h3v6H19v-9h3.5z"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><path d="M12 4V0L6 6l6 6V8a6 6 0 1 1-6 6H3a9 9 0 1 0 9-10z"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M3 4v16l9-8zM12 4v16l9-8z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3.6"/><circle cx="18" cy="6" r="3.6"/><circle cx="6" cy="18" r="3.6"/><circle cx="18" cy="18" r="3.6"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 1.8l3.1 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.6l-6.4 3.6 1.5-7.1L1.7 9.2l7.2-.8z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M12 1.5a5.5 5.5 0 0 0-5.5 5.5v3H4.5v12.5h15V10h-2V7A5.5 5.5 0 0 0 12 1.5zM9 10V7a3 3 0 0 1 6 0v3z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 3v15h10V4z"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15.5 3 6.5 12l9 9 2.6-2.6L11.7 12l5.4-6.4z"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M8.5 3 17.5 12l-9 9-2.6-2.6L12.3 12 6.9 5.6z"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12.8" r="10.5" fill="#c98a00"/><circle cx="12" cy="11.8" r="10.5" fill="#ffd633"/><circle cx="8.6" cy="8" r="3.4" fill="#fff6b0" opacity=".7"/><circle cx="12" cy="11.8" r="7" fill="none" stroke="#c98a00" stroke-width="1.6"/></symbol>
+    <!-- a wand: the stick, a gold star on its tip -->
+    <symbol id="i-wand" viewBox="0 0 100 100"><path d="M18 86 52 52" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M58 24l6.2 12.6 13.9 2-10 9.8 2.4 13.8L58 55.6l-12.5 6.6 2.4-13.8-10-9.8 13.9-2z" transform="translate(-3 -2) scale(.95)" fill="#ffd23f" stroke="#c98a00" stroke-width="2.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sp" viewBox="-10 -10 20 20"><path d="M0-10 2.6-2.6 10 0 2.6 2.6 0 10-2.6 2.6-10 0-2.6-2.6z" fill="#fff"/></symbol>
+  </defs>
+</svg>
+
+<div id="menu" class="screen on">
+  <div class="title">
+    <span class="t1 ol-brown" id="title">Firefly Numbers</span>
+    <!-- Easy: one sparkle on the wand. Medium: two. Hard: three. -->
+    <button id="mode-easy" class="mode" data-mode="easy" aria-label="Easy"><span class="disc"><svg viewBox="0 0 100 100"><use href="#i-wand" width="100" height="100"/><use href="#i-sp" x="66" y="6" width="20" height="20"/></svg></span></button>
+    <button id="mode-medium" class="mode" data-mode="medium" aria-label="Medium"><span class="disc"><svg viewBox="0 0 100 100"><use href="#i-wand" width="100" height="100"/><use href="#i-sp" x="66" y="6" width="20" height="20"/><use href="#i-sp" x="76" y="34" width="17" height="17"/></svg></span></button>
+    <button id="mode-hard" class="mode" data-mode="hard" aria-label="Hard"><span class="disc"><svg viewBox="0 0 100 100"><use href="#i-wand" width="100" height="100"/><use href="#i-sp" x="66" y="6" width="20" height="20"/><use href="#i-sp" x="76" y="34" width="17" height="17"/><use href="#i-sp" x="36" y="2" width="16" height="16"/></svg></span></button>
+  </div>
+  <div id="grid"></div>
+  <div id="dots"><i></i><i></i></div>
+  <div class="pill"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg><span id="coinCount">0</span></div>
+  <button id="prev" class="arrow off" aria-label="World 1"><span class="btn md blue"><svg><use href="#i-left"/></svg></span></button>
+  <button id="next" class="arrow" aria-label="World 2"><span class="btn md blue"><svg><use href="#i-right"/></svg></span></button>
+</div>
+
+<div id="results" class="screen">
+  <div class="card">
+    <div class="bigstars" id="bigStars"></div>
+    <div class="row">
+      <button id="resLevels" class="btn md blue" aria-label="Levels"><svg><use href="#i-grid"/></svg></button>
+      <button id="resReplay" class="btn md pink" aria-label="Play again"><svg><use href="#i-replay"/></svg></button>
+      <button id="resNext" class="btn" aria-label="Next level"><svg><use href="#i-next"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<button id="home" aria-label="Home"><span class="btn sm blue"><svg><use href="#i-home"/></svg></span></button>
+<div id="rotate"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg></div>
+
+<script src="../../fairy/fairy.js"></script>
+<script src="logic.js"></script>
+<script src="art.js"></script>
+<script src="sound.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

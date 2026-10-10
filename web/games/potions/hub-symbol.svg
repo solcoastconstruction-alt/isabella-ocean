@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <!-- Potion Colours' title-screen icon, in the style of the other game symbols in web/index.html: copy the one
+       line below into that file's defs, and show it in a 24 x 24 viewBox with a use element pointing at #i-potions.
+       A white cauldron on three little legs with two pink drops above it and a gold sparkle. -->
+  <symbol id="i-potions" viewBox="0 0 24 24"><path d="M3.2 11.2h17.6c-.2 5.6-2.6 9-5.4 9.8H8.6c-2.8-.8-5.2-4.2-5.4-9.8z" fill="#fff"/><rect x="2" y="9.6" width="20" height="2.6" rx="1.3" fill="#fff"/><path d="M7.6 20.4l-1 2M16.4 20.4l1 2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M8.4 4.2c1.3 1.7 1.9 2.7 1.9 3.5a1.9 1.9 0 0 1-3.8 0c0-.8.6-1.8 1.9-3.5z" fill="#ff6fb0"/><path d="M14 2.4c1.1 1.4 1.6 2.3 1.6 3a1.6 1.6 0 0 1-3.2 0c0-.7.5-1.6 1.6-3z" fill="#ff6fb0"/><path d="M19.8 3.2l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z" fill="#ffd23f"/></symbol>
+</svg>

@@ -477,13 +477,23 @@ async function family() {
   const before = await grab();
   check(before.title === 'playBtn,soundBtn' && before.levels2.startsWith('World 2|') && before.levels2.includes('lvl locked') && before.next === 'intro 11',
     `anchor: the baseline snapshot is real (title ${before.title}; ${before.levels2.length} chars of World 2 grid; next -> ${before.next})`);
-  // Since the baseline, her build gained exactly one thing on the title: the game picker around Play
-  // (Bubble Party, Play, Coral Maze, then "+" for the rest; the list is in web/hub.js). Everything else
-  // must still match the baseline exactly.
-  const expect = { ...before, title: before.title.replace('playBtn', 'popBtn,playBtn,mazeBtn,moreBtn') };
+  // Since the baseline, her build gained exactly TWO things on the title, and nothing else:
+  //   1. the game picker around Play (Bubble Party, Play, Coral Maze, then "+" for the rest; the list is
+  //      in web/hub.js);
+  //   2. the world button in the bottom-right corner (#worldBtn), which flips the title to the Fairy world
+  //      (docs/FAIRY.md). It was added deliberately and is the only new difference, so it is named here and
+  //      nothing else is waved through: the title's buttons are the baseline's with Play expanded into the
+  //      picker and the world button added after the others. The title in the ocean world, which is how this
+  //      page opens, is otherwise the baseline's. Everything else (levels, tiles, stars, results, next level)
+  //      must still match the baseline exactly.
+  const expect = { ...before, title: `${before.title.replace('playBtn', 'popBtn,playBtn,mazeBtn,moreBtn')},worldBtn` };
   for (const k of Object.keys(before)) {
-    check(now[k] === expect[k], `family = before (${BASELINE})${k === 'title' ? ' + game picker' : ''}: ${k}${now[k] === expect[k] ? '' : `\n      now:    ${String(now[k]).slice(0, 200)}\n      expect: ${String(expect[k]).slice(0, 200)}`}`);
+    check(now[k] === expect[k], `family = before (${BASELINE})${k === 'title' ? ' + game picker + world button' : ''}: ${k}${now[k] === expect[k] ? '' : `\n      now:    ${String(now[k]).slice(0, 200)}\n      expect: ${String(expect[k]).slice(0, 200)}`}`);
   }
+  // The same, from the other side: take the two new things out of the title and the baseline is left. (If the
+  // world button ever moved, or a third thing appeared, the check above fails and this one says what is left.)
+  const leftOver = now.title.split(',').filter((b) => b !== 'worldBtn' && !['popBtn', 'mazeBtn', 'moreBtn'].includes(b)).join(',');
+  check(leftOver === before.title, `family = before (${BASELINE}): taking out the picker (popBtn, mazeBtn, moreBtn) and the world button (worldBtn), the title is the baseline's (${before.title}; left: ${leftOver})`);
 }
 
 async function smallScreen() {

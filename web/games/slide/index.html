@@ -1,0 +1,189 @@
+<!doctype html>
+<!-- Rainbow Slide: Isabella the Fairy slides down a winding rainbow. Steer left and right (a finger held on her left
+     or right, or lean the phone) round the clouds, follow the coins, catch the key, open the treasure. Easy, Medium
+     and Hard, 20 courses in two worlds. No words to read, nothing to lose.
+     Standalone page; the hub links here, and the home button / Android back button return to ../../index.html. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Rainbow Slide</title>
+<link rel="icon" href="data:,">
+<style>
+  /* Buttons, outlines, level bubbles and the results card follow Splash Dash and Sea Jigsaw (web/games/dash, web/games/jigsaw). */
+  :root { --gold1:#fff1a0; --gold2:#ffc21a; --gold3:#d98a00; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#8ccdf2; touch-action:none;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+    font-family: system-ui, Roboto, sans-serif; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  .screen { position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; }
+  .screen.on { display:flex; }
+  button { font:inherit; color:inherit; border:none; padding:0; cursor:pointer; background:none; touch-action:manipulation; }
+  .btn { width:24vh; height:24vh; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 35% 28%, var(--gold1), var(--gold2) 55%, var(--gold3));
+    box-shadow:0 1.3vh 0 #a86400, 0 2.5vh 4vh rgba(0,0,0,0.3); transition:transform .08s; }
+  .btn:active { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #a86400; }
+  .btn svg { width:56%; height:56%; fill:#fff; filter:drop-shadow(0 .4vh 0 rgba(150,80,0,0.6)); }
+  .btn.md { width:19vh; height:19vh; }
+  .btn.sm { width:15vh; height:15vh; }
+  .btn.pink { background:radial-gradient(circle at 35% 28%, #ffd1ea, #ff6fb0 55%, #d63384); box-shadow:0 1.3vh 0 #9c1f5c, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.blue { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); box-shadow:0 1.3vh 0 #145f8a, 0 2.5vh 4vh rgba(0,0,0,0.3); }
+  .btn.pink svg, .btn.blue svg { filter:drop-shadow(0 .4vh 0 rgba(0,0,0,0.25)); }
+  .row { display:flex; gap:4vh; align-items:center; justify-content:center; }
+  /* Outlines are stacked drop-shadows (-webkit-text-stroke left stray lines inside letters on the Seeker). */
+  .ol-pink { filter:drop-shadow(.6vh 0 0 #b0306c) drop-shadow(-.6vh 0 0 #b0306c) drop-shadow(0 .6vh 0 #b0306c) drop-shadow(0 -.6vh 0 #b0306c) drop-shadow(0 1vh 0 rgba(90,20,60,0.35)); }
+  .ol-navy { filter:drop-shadow(.35vh 0 0 rgba(30,30,100,0.8)) drop-shadow(-.35vh 0 0 rgba(30,30,100,0.8)) drop-shadow(0 .35vh 0 rgba(30,30,100,0.8)) drop-shadow(0 -.35vh 0 rgba(30,30,100,0.8)); }
+
+  /* corner buttons: a small disc inside a full 19vh touch area */
+  .corner { position:fixed; width:19vh; height:19vh; display:flex; align-items:center; justify-content:center; z-index:10; }
+  .corner .btn { pointer-events:none; }
+  .corner:active .btn { transform:translateY(1vh) scale(0.97); box-shadow:0 .3vh 0 #145f8a; }
+  #homeBtn { top:1.5vh; left:max(1.5vh, env(safe-area-inset-left)); }
+
+  /* level select: the name and the three modes along the top, ten bubbles a page, two pages (the two worlds) */
+  .title { position:fixed; top:.5vh; left:22vh; right:min(34vh, 18vw); height:21vh; display:flex; align-items:center; justify-content:center; gap:min(3vh, 1.6vw); pointer-events:none; }
+  .title .t1 { display:inline-block; pointer-events:auto; font-size:min(11vh, 5.2vw); font-weight:900; letter-spacing:.3vh; line-height:1.05; white-space:nowrap; margin-right:min(2vh, 1vw);
+    background:linear-gradient(180deg,#fff7b0,#ffd23f 45%,#ff9f1c); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  /* the mode, in pictures: a wand with one sparkle, two, three. The one in play is bright, bigger and ringed in gold; the others are faded. */
+  .mode { width:19vh; height:19vh; flex:none; display:flex; align-items:center; justify-content:center; pointer-events:auto; }
+  .mode .disc { width:15.5vh; height:15.5vh; border-radius:50%; display:flex; align-items:center; justify-content:center; box-sizing:border-box;
+    border:.6vh solid rgba(255,255,255,0.55); box-shadow:0 1vh 0 rgba(60,30,100,0.35); transition:transform .15s, filter .15s; filter:saturate(0.35) brightness(0.86); opacity:.88; }
+  .mode .disc svg { width:76%; height:76%; }
+  #mode-easy .disc { background:radial-gradient(circle at 35% 28%, #dafff5, #2ec4a6 55%, #138a74); }
+  #mode-medium .disc { background:radial-gradient(circle at 35% 28%, #c9f3ff, #4cc9f0 55%, #1b7fb8); }
+  #mode-hard .disc { background:radial-gradient(circle at 35% 28%, #f4e3ff, #b46cf0 55%, #7a2fc0); }
+  .mode.on .disc { filter:none; opacity:1; transform:scale(1.12); border-color:#fff; box-shadow:0 0 0 .8vh rgba(255,210,63,0.95), 0 1.3vh 0 rgba(60,30,100,0.45); }
+  .mode:active .disc { transform:scale(1.04) translateY(.8vh); }
+  @media (max-aspect-ratio: 18/10) { .title .t1 { font-size:min(9vh, 3.8vw); } }
+  /* 21vh bubbles on a phone; on squarer screens they shrink so the row of five clears the page arrows */
+  #grid { --b:min(21vh, calc((100vw - 46vh - 8vw) / 6)); display:grid; grid-template-columns:repeat(5, var(--b)); gap:calc(var(--b) / 4); margin-top:20vh; }
+  .lvl { width:var(--b); height:var(--b); border-radius:50%; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 1.1vh 0 rgba(60,30,100,0.45), inset 0 -1.5vh 3vh rgba(0,0,0,0.2), inset 0 1.5vh 2vh rgba(255,255,255,0.5); border:.6vh solid #fff; box-sizing:border-box; }
+  .lvl:active { transform:translateY(.8vh); }
+  .lvl .num { font-size:calc(var(--b) * 0.42); font-weight:900; color:#fff; line-height:1; }
+  .lvl .st { display:flex; gap:.3vh; margin-top:.6vh; }
+  .lvl .st svg { width:calc(var(--b) * 0.21); height:calc(var(--b) * 0.21); }
+  .lvl.locked { filter:grayscale(0.8) brightness(0.75); }
+  .lvl.locked .num, .lvl.locked .st { display:none; }
+  .lvl .lock { width:calc(var(--b) * 0.4); height:calc(var(--b) * 0.4); fill:#fff; display:none; }
+  .lvl.locked .lock { display:block; }
+  .lvl.shake { animation:shake .4s; }
+  .lvl.next { animation:bob 1.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform:translateY(-1.6vh) scale(1.04); } }
+  @keyframes shake { 20%,60% { transform:translateX(-1.5vh); } 40%,80% { transform:translateX(1.5vh); } }
+  .pg { position:fixed; top:50%; margin-top:8vh; transform:translateY(-50%); width:19vh; height:19vh; display:flex; align-items:center; justify-content:center; }
+  .pg .btn { pointer-events:none; }
+  .pg:active .btn { transform:translateY(1vh) scale(0.97); }
+  #pgPrev { left:max(2vw, 2vh); }
+  #pgNext { right:max(2vw, 2vh); }
+  .dots { position:fixed; bottom:3vh; left:50%; transform:translateX(-50%); display:flex; gap:2vh; justify-content:center; pointer-events:none; }
+  .dots span { width:2.6vh; height:2.6vh; border-radius:50%; background:rgba(255,255,255,0.5); }
+  .dots span.on { background:#fff; box-shadow:0 0 0 .5vh rgba(255,255,255,0.4); }
+  .pill { position:fixed; top:4vh; right:max(3vh, env(safe-area-inset-right)); display:flex; align-items:center; gap:1.2vh; padding:1.4vh 3vh 1.4vh 2vh;
+    border-radius:7vh; background:rgba(255,255,255,0.92); color:#c77700; font-size:5.5vh; font-weight:900; line-height:1; box-shadow:0 1vh 0 rgba(60,30,100,0.35); pointer-events:none; }
+  .pill svg { width:6.5vh; height:6.5vh; }
+  #starPill { top:auto; bottom:3vh; right:max(3vh, env(safe-area-inset-right)); }
+
+  /* in a course: the coins so far and the key (top right) */
+  #hud { display:none; z-index:6; gap:2vh; pointer-events:auto; }
+  body.play #hud { display:flex; }
+  #hud.bump #coinCount { animation:hudbump .25s; display:inline-block; }
+  @keyframes hudbump { 40% { transform:scale(1.25); } }
+  #hud .keyi { width:12vh; height:6.5vh; opacity:.28; filter:grayscale(1); transition:opacity .2s; }
+  #hud .keyi.on { opacity:1; filter:none; animation:keypop .5s cubic-bezier(.3,1.8,.5,1); }
+  @keyframes keypop { from { transform:scale(0.4) rotate(-30deg); } }
+
+  /* results: a card on the left, so the chest can burst open on the right */
+  #results { background:rgba(40,20,90,0.10); }
+  .card { position:fixed; left:33%; top:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,0.93); border-radius:6vh; padding:4vh 5vh 5vh;
+    display:flex; flex-direction:column; align-items:center; gap:3vh; box-shadow:0 2vh 0 rgba(60,30,100,0.3); border:.8vh solid #ffd23f; }
+  .bigstars { display:flex; gap:3vh; }
+  .bigstars svg { width:17vh; height:17vh; transform:scale(0); }
+  .bigstars svg.pop { animation:pop .5s cubic-bezier(.3,1.8,.5,1) forwards; }
+  @keyframes pop { to { transform:scale(1); } }
+  .got { display:flex; align-items:center; gap:1.4vh; font-size:8vh; font-weight:900; color:#c77700; line-height:1; }
+  .got svg { width:8.5vh; height:8.5vh; }
+  .got .keyr { width:14vh; height:7vh; }
+  .got .of { font-size:5.5vh; color:#d9a44a; }
+  #resNext { animation:nudge 1.8s ease-in-out 1.6s infinite; }
+  @keyframes nudge { 0%, 70%, 100% { transform:scale(1); } 80% { transform:scale(1.08); } 90% { transform:scale(0.98); } }
+
+  /* for grown-ups checking the sensors: a small readout (hold the coin counter for 3 seconds, or add ?dbg=1) */
+  #dbg { position:fixed; left:22vh; bottom:1vh; margin:0; padding:1vh 1.5vh; z-index:30; display:none; font:600 2.6vh/1.25 ui-monospace, Menlo, monospace; color:#fff;
+    background:rgba(30,20,70,0.72); border-radius:1.5vh; pointer-events:none; white-space:pre; }
+
+  /* held upright? (the Android app is always landscape) */
+  #rotate { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:#8ccdf2; z-index:20; }
+  #rotate svg { width:40vw; height:40vw; fill:#fff; animation:turn 2s ease-in-out infinite; }
+  @keyframes turn { 0%,25% { transform:rotate(0); } 60%,100% { transform:rotate(-90deg); } }
+  @media (orientation: portrait) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 2.5 1.5 12H5v9h5.5v-6h3v6H19v-9h3.5z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 4.5v15l12-7.5z"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><path d="M12 4V0L6 6l6 6V8a6 6 0 1 1-6 6H3a9 9 0 1 0 9-10z"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M3 4v16l9-8zM12 4v16l9-8z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3.6"/><circle cx="18" cy="6" r="3.6"/><circle cx="6" cy="18" r="3.6"/><circle cx="18" cy="18" r="3.6"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 1.8l3.1 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.6l-6.4 3.6 1.5-7.1L1.7 9.2l7.2-.8z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M12 1.5a5.5 5.5 0 0 0-5.5 5.5v3H4.5v12.5h15V10h-2V7A5.5 5.5 0 0 0 12 1.5zM9 10V7a3 3 0 0 1 6 0v3z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 3v15h10V4z"/></symbol>
+    <symbol id="i-key" viewBox="0 0 64 32"><circle cx="13" cy="16" r="11" fill="#ffc21a" stroke="#a86a00" stroke-width="2.5"/><path d="M13 21.5c-5.5-3.3-6.6-6.3-5-8.3 1.5-1.8 4-1.3 5 .5 1-1.8 3.5-2.3 5-.5 1.6 2-.5 5-5 8.3z" fill="#ff4d8d"/><rect x="22" y="12" width="38" height="8" rx="3" fill="#ffc21a" stroke="#a86a00" stroke-width="2.5"/><rect x="44" y="19" width="5" height="9" fill="#ffc21a" stroke="#a86a00" stroke-width="2"/><rect x="53" y="19" width="5" height="6" fill="#ffc21a" stroke="#a86a00" stroke-width="2"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12.8" r="10.5" fill="#c98a00"/><circle cx="12" cy="11.8" r="10.5" fill="#ffd633"/><circle cx="8.6" cy="8" r="3.4" fill="#fff6b0" opacity=".7"/><circle cx="12" cy="11.8" r="7" fill="none" stroke="#b46e00" stroke-width="1.2" opacity=".75"/><path d="M12 7.3l1.4 2.9 3.2.4-2.4 2.2.7 3.2-2.9-1.6-2.9 1.6.7-3.2-2.4-2.2 3.2-.4z" fill="#c87d00" opacity=".85"/></symbol>
+    <!-- a four-point sparkle, centred on (0,0), radius 1 -->
+    <symbol id="i-sp" viewBox="-1 -1 2 2"><path d="M0 -1 L0.26 -0.26 L1 0 L0.26 0.26 L0 1 L-0.26 0.26 L-1 0 L-0.26 -0.26z"/></symbol>
+  </defs>
+</svg>
+
+<div id="levels" class="screen on">
+  <div class="title">
+    <span class="t1 ol-pink" id="title">Rainbow Slide</span>
+    <!-- Easy: a wand with one sparkle. Medium: two. Hard: three. -->
+    <button id="mode-easy" class="mode" data-mode="easy" aria-label="Easy: one sparkle"><span class="disc"><svg viewBox="0 0 100 100">
+      <path d="M22 84 62 44" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M60 46 66 40" stroke="#ffd23f" stroke-width="7" stroke-linecap="round"/>
+      <g fill="#ffd23f"><path transform="translate(72 30) scale(21)" d="M0 -1 L0.26 -0.26 L1 0 L0.26 0.26 L0 1 L-0.26 0.26 L-1 0 L-0.26 -0.26z"/></g></svg></span></button>
+    <button id="mode-medium" class="mode" data-mode="medium" aria-label="Medium: two sparkles"><span class="disc"><svg viewBox="0 0 100 100">
+      <path d="M20 86 54 52" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M52 54 58 48" stroke="#ffd23f" stroke-width="7" stroke-linecap="round"/>
+      <g fill="#ffd23f"><path transform="translate(66 36) scale(20)" d="M0 -1 L0.26 -0.26 L1 0 L0.26 0.26 L0 1 L-0.26 0.26 L-1 0 L-0.26 -0.26z"/></g>
+      <g fill="#fff"><path transform="translate(82 56) scale(12)" d="M0 -1 L0.26 -0.26 L1 0 L0.26 0.26 L0 1 L-0.26 0.26 L-1 0 L-0.26 -0.26z"/></g></svg></span></button>
+    <button id="mode-hard" class="mode" data-mode="hard" aria-label="Hard: three sparkles"><span class="disc"><svg viewBox="0 0 100 100">
+      <path d="M18 88 48 58" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M46 60 52 54" stroke="#ffd23f" stroke-width="7" stroke-linecap="round"/>
+      <g fill="#ffd23f"><path transform="translate(60 42) scale(19)" d="M0 -1 L0.26 -0.26 L1 0 L0.26 0.26 L0 1 L-0.26 0.26 L-1 0 L-0.26 -0.26z"/></g>
+      <g fill="#fff"><path transform="translate(80 24) scale(12)" d="M0 -1 L0.26 -0.26 L1 0 L0.26 0.26 L0 1 L-0.26 0.26 L-1 0 L-0.26 -0.26z"/><path transform="translate(82 60) scale(11)" d="M0 -1 L0.26 -0.26 L1 0 L0.26 0.26 L0 1 L-0.26 0.26 L-1 0 L-0.26 -0.26z"/></g></svg></span></button>
+  </div>
+  <div id="grid"></div>
+  <button id="pgPrev" class="pg" aria-label="World 1"><span class="btn sm pink"><svg style="transform:scaleX(-1)"><use href="#i-play"/></svg></span></button>
+  <button id="pgNext" class="pg" aria-label="World 2"><span class="btn sm pink"><svg><use href="#i-play"/></svg></span></button>
+  <div class="dots" id="pgDots"></div>
+  <div class="pill" id="coinPill"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg><span id="coinTotal">0</span></div>
+  <div class="pill" id="starPill"><svg viewBox="0 0 24 24"><use href="#i-star" fill="#ffd23f" stroke="#c77700" stroke-width="1.5"/></svg><span id="starCount">0</span></div>
+</div>
+
+<div id="results" class="screen">
+  <div class="card">
+    <div class="bigstars" id="bigStars"></div>
+    <div class="got"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg><span id="resCoins">0</span><span class="of" id="resOf"></span><svg class="keyr" viewBox="0 0 64 32"><use href="#i-key"/></svg></div>
+    <div class="row">
+      <button id="resLevels" class="btn md blue" aria-label="Levels"><svg><use href="#i-grid"/></svg></button>
+      <button id="resReplay" class="btn md pink" aria-label="Play again"><svg><use href="#i-replay"/></svg></button>
+      <button id="resNext" class="btn" aria-label="Next course"><svg><use href="#i-next"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="pill" id="hud"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg><span id="coinCount">0</span><svg class="keyi" id="keyIcon" viewBox="0 0 64 32"><use href="#i-key"/></svg></div>
+<button id="homeBtn" class="corner" aria-label="Home"><span class="btn sm blue"><svg><use href="#i-home"/></svg></span></button>
+<pre id="dbg"></pre>
+<div id="rotate"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg></div>
+
+<script src="../../fairy/fairy.js"></script>
+<script src="logic.js"></script>
+<script src="art.js"></script>
+<script src="sound.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

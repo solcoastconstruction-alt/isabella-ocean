@@ -172,6 +172,10 @@
       A.init(); A.click(); persist(); location.href = g.page;
     });
   }
+  // The corner button flips the title between the ocean and the fairy world (hub.js redraws both screens
+  // and remembers the choice). The flagship fairy game is the big middle button there: hub.js draws it, and
+  // the click handler above opens whichever game's button was pressed.
+  tap('worldBtn', () => H.setWorld(H.getWorld() === 'fairy' ? 'ocean' : 'fairy'));
   tap('moreBtn', goMore);
   tap('moreBack', goTitle);
   tap('soundBtn', () => { save.muted = !save.muted; A.setMuted(save.muted); persist(); setSoundIcon(); });
@@ -242,7 +246,9 @@
     const dt = Math.min(0.05, last ? (nowMs - last) / 1000 : 0);
     last = nowMs; clock += dt;
     if (mode === 'title' || mode === 'more' || mode === 'levels') {
-      R.drawAttract(clock, dt, mode === 'levels' ? menuTheme : 1);
+      // Isabella's own level map is always the sea; the title and its "+" screen follow the world.
+      if (mode !== 'levels' && H.getWorld() === 'fairy') R.drawFairyAttract(clock, dt);
+      else R.drawAttract(clock, dt, mode === 'levels' ? menuTheme : 1);
     } else if (game) {
       if (mode === 'play') {
         let rem = dt;
@@ -267,6 +273,7 @@
   window.__dbg = {
     start: startLevel, play: beginPlay,
     get game() { return game; }, get mode() { return mode; },
+    get world() { return H.getWorld(); }, setWorld(w) { return H.setWorld(w); },
     unlockAll() { save.unlocked = NLEV; persist(); },
     reset() { save = { unlocked: 1, stars: new Array(NLEV).fill(0), gold: 0, muted: false, played: false }; persist(); goTitle(); },
   };

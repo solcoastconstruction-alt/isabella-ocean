@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <!-- Firefly Numbers' title-screen icon, in the style of the other game symbols in web/index.html: copy the one
+       line below into that file's defs, and show it in a 24 x 24 viewBox with a use element pointing at #i-fireflies.
+       A white glass jar with a pink cork, a glowing gold firefly with pink wings inside it, and a gold sparkle. -->
+  <symbol id="i-fireflies" viewBox="0 0 24 24"><path d="M8.2 5.6h7.6v1.9c2.7 1 4.5 3.4 4.5 6.3 0 4-3.4 7.2-8.3 7.2s-8.3-3.2-8.3-7.2c0-2.9 1.8-5.3 4.5-6.3z" fill="#fff"/><rect x="8.4" y="3" width="7.2" height="2.9" rx="1.1" fill="#ff6fb0"/><circle cx="12.4" cy="15.2" r="4.9" fill="#ffd23f" opacity=".35"/><ellipse cx="10.9" cy="12" rx="2.3" ry="0.95" transform="rotate(48 10.9 12)" fill="#ff6fb0"/><ellipse cx="14" cy="12" rx="2.3" ry="0.95" transform="rotate(-48 14 12)" fill="#ff6fb0"/><ellipse cx="13" cy="15.8" rx="2.7" ry="1.9" fill="#ffd23f"/><circle cx="9.8" cy="15.3" r="1.25" fill="#8a5a3a"/><path d="M20.6.4l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" fill="#ffd23f"/></symbol>
+</svg>

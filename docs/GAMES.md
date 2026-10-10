@@ -1,6 +1,6 @@
 # The games
 
-Nine ocean games share one app. Each is plain HTML5 canvas with no libraries; all the art and sound
+Fifteen games share one app: nine in the ocean and six in the Fairy world (`docs/FAIRY.md`). Each is plain HTML5 canvas with no libraries; all the art and sound
 are made in code. The title screen ("hub", `web/index.html`) shows three of them as picture buttons
 (Bubble Party, Isabella, Coral Maze) and a "+" button that opens a second screen with the other six.
 One list, `GAMES` in `web/hub.js`, decides which game sits where.
@@ -19,6 +19,23 @@ One list, `GAMES` in `web/hub.js`, decides which game sits where.
 
 The last four were merged on 4 Oct 2026 (app version 2.4). Their ages are estimates: no child has
 played any of the four yet, and nobody has listened to their sound.
+
+**The Fairy world** (added 10 Oct 2026; the world button on the title flips to it). Every fairy game has Easy,
+Medium and Hard, 20 levels in two worlds (the Meadow, the Cloud Tops), stars never for speed and a chest at
+the end of every level. The design and the common frame are in `docs/FAIRY.md`; each game's own section
+(how it plays, the level table, modes, proof) is in `docs/fairy/<id>.md`.
+
+| Game | Folder | Ages | What it is | Save key | Tests |
+|---|---|---|---|---|---|
+| Fairy Flight | `web/games/flight/` | 3–8 | fly plant to plant, sprinkle dust, dodge critters and bugs | `game.flight.save` | `test/games/flight/` |
+| Rainbow Slide | `web/games/slide/` | 4–8 | slide down a rainbow round clouds to the key and the chest; loops | `game.slide.save` | `test/games/slide/` |
+| Toadstool Hop | `web/games/hop/` | 3–8 | tap to hop across toadstools, lily pads and clouds over a waterfall | `game.hop.save` | `test/games/hop/` |
+| Firefly Numbers | `web/games/fireflies/` | 3–8 | count fireflies into a jar to a numeral with dots; sums and take-aways | `game.fireflies.save` | `test/games/fireflies/` |
+| Petal Patterns | `web/games/petals/` | 3–8 | what comes next in a row of flowers; odd one out on Hard | `game.petals.save` | `test/games/petals/` |
+| Potion Colours | `web/games/potions/` | 3–8 | mix two or three potions to the colour a flower asks for | `game.potions.save` | `test/games/potions/` |
+
+All six are free in both flavors. Their ages are estimates: no child has played any of them yet, and nobody
+has listened to their sound.
 
 In the family app everything is unlocked. Saves go through `window.IsabellaStore`, which is Android
 SharedPreferences (file `isabella`), or `localStorage` in a browser. Sound on or off is one shared
@@ -287,22 +304,25 @@ Speed is in world units per second on a 540-tall screen: about 5 s from the top 
 
 ## The hub (title screen)
 - **Title screen, left to right:** Bubble Party, Isabella (the big Play button), Coral Maze, then "+".
+- **Two worlds, one title:** a round button in the bottom-right corner (a rainbow in the ocean, a wave and a shell in the Fairy world) flips the title between the ocean and the Fairy world (`docs/FAIRY.md`). The fairy title reads "Isabella the Fairy", has Fairy Flight as the big middle button where Play was (same size), Rainbow Slide on its left, Toadstool Hop on its right, then "+" (Firefly Numbers, Petal Patterns, Potion Colours), over a meadow with Isabella the Fairy flying across. The world is remembered (`hub.world`), so a game's home button and the next start open on the world she left. Everything else on the title (sound, coins, Add to Home screen, the Grown-ups button) stays put in both.
 - **More games ("+"):** Shell Match, Sea Words, Treasure Blocks, Sea Jigsaw, Splash Dash, Sea Catch, with a back button in the corner.
   - Buttons are pictures only, between 19vh and 30vh, in the fewest rows that give the biggest buttons.
   - On the Seeker that is one row for up to 4 games, two rows for up to 10 and three rows for up to 18.
-- **One list drives both screens:** `GAMES` in `web/hub.js`, one line per game (`id`, `page`, `symbol`, `label`, `color`).
-  - The first two lines sit on the title, one each side of Play. Every line after those sits behind "+".
+- **One list drives both screens:** `GAMES` in `web/hub.js`, one line per game (`id`, `page`, `symbol`, `label`, `color`, `world`).
+  - `world` is `'ocean'` or `'fairy'`; each world is laid out from its own lines, in list order.
+  - Ocean: the first two lines sit on the title, one each side of Play. Every line after those sits behind "+".
+  - Fairy: the first line is the big middle button (it takes the place of Play), the next two sit beside it (second on the left, third on the right), every line after those sits behind "+".
   - Isabella is not in the list. Her Play button is written in `web/index.html` and is always the big one in the middle.
   - The icons are SVG `<symbol>`s in `web/index.html`.
   - `web/app.js` has one click handler for both screens; it opens the page of whichever game's button was pressed.
 - **Two recipes** (also in the comment at the top of `web/hub.js`):
-  - **Add a game:** put its `<symbol>` beside the others in `web/index.html`, then add one line to `GAMES`.
-  - **Change which two games are on the title:** move lines; the top two are on the title. Then change `ON_TITLE` in `test/hub/hub.test.js` and the family baseline in `test/paywall/drive.js` to match. Both name the title's two games on purpose, so a slip is caught.
-- **Coming back:** a game's home button loads `../../index.html`, which opens on the title, not on the more-games screen.
+  - **Add a game:** put its `<symbol>` beside the others in `web/index.html`, then add one line to `GAMES` with its `world`.
+  - **Change which games are on the title:** move lines within a world; the top two ocean lines and the top three fairy lines are on the title. Then change `ON_TITLE` and `FAIRY_ON_TITLE` in `test/hub/hub.test.js` (and, for the ocean pair, the family baseline in `test/paywall/drive.js`) to match. They name the title's games on purpose, so a slip is caught.
+- **Coming back:** a game's home button loads `../../index.html`, which opens on the title (in the world she was in), not on the more-games screen.
 - **Back button:**
   - Android back calls `window.__back()`.
   - In a mini-game that returns to the hub.
-  - On the more-games screen it returns to the title.
+  - On the more-games screen it returns to the title (the fairy "+" returns to the fairy title).
   - In Isabella it pauses or resumes a level, and steps back from other screens.
 - **Inside the Android app, both flavors:** "Add to Home screen" shows on the title until the app is pinned.
 - **Store app only:** the Grown-ups button opens the parent area.
@@ -320,6 +340,6 @@ Speed is in world units per second on a 540-tall screen: about 5 s from the top 
    - a defect-injection script breaks copies of the game on purpose and shows the tests catch each one.
    - Use your own DevTools port (TESTING.md).
 5. **Wiring it in (coordinator):**
-   - put the game's picture, a `<symbol id="i-...">`, beside the others in `web/index.html` (the four newest games each supply one as `hub-symbol.svg`);
-   - add one line to `GAMES` in `web/hub.js`. A new line at the end goes behind "+";
-   - run `node test/hub/hub.test.js`. It reads the list, so it needs no change unless the title's two games change.
+   - put the game's picture, a `<symbol id="i-...">`, beside the others in `web/index.html` (the newest games each supply one as `hub-symbol.svg`);
+   - add one line to `GAMES` in `web/hub.js`, saying which world it is in (`world: 'ocean'` or `'fairy'`). A new line at the end of its world's lines goes behind that world's "+";
+   - run `node test/hub/hub.test.js`. It reads the list, so it needs no change unless a title's games change (`ON_TITLE` is the ocean pair, `FAIRY_ON_TITLE` the fairy three). A fairy line whose page is missing fails it.

@@ -6,8 +6,8 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | Command | Checks | Last result | Port |
 |---|---|---|---|
 | `node test/verify.js` | Isabella: all 20 levels finishable; levels 1–10 byte-identical (frozen) | 20/20 | – |
-| `node test/hub/hub.test.js` | Title screen (a game, Play, a game, "+") and the more-games screen, at 915×412 and 800×360 in both flavors: buttons ≥19vh, nothing overlapping, every game opens and comes back; the two recipes in `web/hub.js` carried out on a copy | 142/142 | 9454 |
-| `node test/paywall/drive.js` | Paywall, parent gate, grown-ups screen; family baseline unchanged | 96/96 | 9450 |
+| `node test/hub/hub.test.js` | Title screen in both worlds (ocean: a game, Play, a game, "+"; fairy: a game, the flagship, a game, "+") with the world button, and the more-games screens, at 915×412 and 800×360 in both flavors (layout also at 1335×600 and 1024×768): buttons ≥19vh, nothing overlapping, the world flips and is remembered, every game opens and comes back (a missing fairy page fails), the fairy never crosses a button; the recipes in `web/hub.js` carried out on a copy for both worlds | 521/521 | 9454 |
+| `node test/paywall/drive.js` | Paywall, parent gate, grown-ups screen; family baseline unchanged but for the picker and the world button | 97/97 | 9450 |
 | `cd tools && npm test` | Payments: unit tests (including the price as exactly 4,990,000 USDC base units), devnet simulation, Jupiter read-only, the mainnet config against the devnet one | 48 pass, 9 skipped (5 Oct) | – |
 | `node rpc-relay/test/relay.test.mjs` | RPC relay guards: allow-list, body and batch caps, CORS, rate limit, no provider URL in any answer (RPC-RELAY.md) | 29/29 (5 Oct) | – |
 | `node rpc-relay/test/app-methods.test.mjs` | The relay's allow-list equals the RPC methods the app's scripts call; no send, no subscription | 10/10 (5 Oct) | – |
@@ -41,9 +41,15 @@ touch or mouse input, each on its own port. Two tests that share a port must not
 | `node test/games/catch/browser.js` | Sea Catch with real touch drags | 101/101 | 9483 |
 | `node test/games/catch/soak.js` | ~3 minutes of random play | pass (on its branch) | 9483 |
 | `node test/games/catch/defects.js` | Breaks copies of Sea Catch on purpose (`rules` for the quick ones) | 34/34 caught (on its branch) | 9483 |
+| `node test/games/flight/verify.js` · `browser.js` · `soak.js` · `defects.js` | Fairy Flight: all 60 courses frozen and swept at 60 % vertical speed; model children finish every course (`docs/fairy/flight.md`) | 69/69 · 104/104 · pass · 52/52 caught (verify and browser re-run on `main` 10 Oct; soak and defects on the game's branch) | 9491 |
+| `node test/games/slide/verify.js` · `browser.js` · `soak.js` · `defects.js` | Rainbow Slide: a clean line through every coin and the key on all 60 courses; the tilt maths; real sensor events in the browser (`docs/fairy/slide.md`) | 1952/1952 · 155/155 · pass · 45/45 caught (verify and browser re-run on `main` 10 Oct; soak and defects on the game's branch) | 9492 |
+| `node test/games/hop/verify.js` · `browser.js` · `soak.js` · `defects.js` | Toadstool Hop: a splash-free hop sequence that takes every coin on all 60 courses; a 300 ms-reaction child reaches every chest (`docs/fairy/hop.md`) | 32/32 · 105/105 · pass · 46/46 caught (verify and browser re-run on `main` 10 Oct; soak and defects on the game's branch) | 9493 |
+| `node test/games/fireflies/verify.js` · `browser.js` · `soak.js` · `defects.js` | Firefly Numbers: every round's target, dots and sums; fireflies never overlap; 60 fingerprints (`docs/fairy/fireflies.md`) | 61/61 · 117/117 · pass · 51/51 caught (verify and browser re-run on `main` 10 Oct; soak and defects on the game's branch) | 9494 |
+| `node test/games/petals/verify.js` · `browser.js` · `soak.js` · `defects.js` | Petal Patterns: every round has exactly one answer, by a separate brute-force solver over 120,000 rounds (`docs/fairy/petals.md`) | 44/44 · 108/108 · pass · 56/56 caught (verify and browser re-run on `main` 10 Oct; soak and defects on the game's branch) | 9495 |
+| `node test/games/potions/verify.js` · `browser.js` · `soak.js` · `defects.js` | Potion Colours: every flower has exactly one recipe from the bottles on the table; the mixing table matches the doc (`docs/fairy/potions.md`) | 45/45 · 129/129 · pass · 54/54 caught (verify and browser re-run on `main` 10 Oct; soak and defects on the game's branch) | 9496 |
 | `node test/e2e/emulator-flow.js` | The full parent flow on the emulator with real devnet transactions | 9/9 | 9460 |
 
-Results are from `main` on 4 Oct 2026 (app version 2.4). "On its branch" means the game's building
+Results are from `main` on 4 Oct 2026 (app version 2.4), the Fairy world rows and the hub and paywall rows from `main` on 10 Oct 2026. "On its branch" means the game's building
 agent ran it before the merge and it has not been re-run on `main`.
 
 ## End to end on the emulator

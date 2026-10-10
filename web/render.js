@@ -968,8 +968,59 @@
     drawParts();
   }
 
+  // title / menu background for the Fairy world: a Meadow sky and hills, trees along the ground, grass and
+  // flowers, a few clouds drifting, and Isabella the Fairy flying across from left to right (looping) with a
+  // dust trail. Drawn through FairyArt (web/fairy/fairy.js); no blur or shadow filters, so a frame is cheap.
+  // She keeps to one lane clear of the title's buttons: the upper band of the screen, above the row of game
+  // buttons; on squarer screens (16:10 or less, where that band is crowded) the lower band, over the meadow.
+  const fairyGround = (x) => 452 + 14 * Math.sin(x / 150) + 8 * Math.sin(x / 53 + 1);
+  const fairyHash = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+  function drawFairyAttract(time, dt) {
+    const F = window.FairyArt;
+    if (!F) { ctx.setTransform(s, 0, 0, s, 0, 0); ctx.fillStyle = '#8fd8ff'; ctx.fillRect(0, 0, VW, H); return; }
+    const T = F.THEMES[3];                               // Sunny meadow
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    F.drawSky(ctx, VW, H, T, time);
+    // clouds drifting right, slow, each at its own speed
+    for (let i = 0; i < 4; i++) {
+      const w = [230, 170, 270, 150][i], span = VW + 2 * w, sp = [7, 11, 5, 14][i];
+      const x = ((((i * 0.37 * span + time * sp) % span) + span) % span) - w;
+      F.drawCloud(ctx, x, [150, 96, 200, 62][i], w, { light: T.cloud[0], shade: T.cloud[1] });
+    }
+    // the near hill, then trees, flowers and grass standing on it
+    const g = ctx.createLinearGradient(0, 410, 0, H);
+    g.addColorStop(0, T.ground[0]); g.addColorStop(1, T.ground[1]);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= VW + 20; x += 20) ctx.lineTo(x, fairyGround(x));
+    ctx.lineTo(VW + 20, H); ctx.closePath(); ctx.fill();
+    for (let i = 0, n = Math.ceil(VW / 215) + 1; i < n; i++) {
+      const x = 40 + i * 215 + fairyHash(i, 1) * 60;
+      F.drawTree(ctx, x, fairyGround(x) + 4, 0.85 + fairyHash(i, 2) * 0.3, i % 4, time);
+    }
+    for (let i = 0, n = Math.ceil(VW / 150) + 1; i < n; i++) {
+      const x = 60 + i * 150 + fairyHash(i, 3) * 70, y = fairyGround(x) + 22 + fairyHash(i, 4) * 30;
+      if (i % 5 === 2) F.drawMushroom(ctx, x, y, 0.5, i % 2 ? '#ff4d6d' : '#c86bfa');
+      else F.drawFlower(ctx, x, y, 0.9, i, 1, time);
+    }
+    for (let x = -10; x < VW + 40; x += 70) F.drawGrass(ctx, x, fairyGround(x) + 36 + fairyHash(x, 5) * 14, 64, time);
+    // Isabella the Fairy
+    const lowLane = VW / H <= 1.6, sc = lowLane ? 1.25 : 1.3, span = VW + 340, speed = 85;
+    const lane = (t) => ({ x: (((t * speed) % span) + span) % span - 170, y: (lowLane ? 478 : 70) + Math.sin(t * 1.3) * 16 });
+    const now = lane(time), cycle = Math.floor((time * speed) / span), trail = [];
+    for (let k = 1; k <= 12; k++) {
+      const age = k * 0.1, past = lane(time - age);
+      if (Math.floor(((time - age) * speed) / span) !== cycle) break;        // before she looped round: no trail from the far edge
+      trail.push({ x: past.x - 26 * sc, y: past.y + 10 * sc, age });
+    }
+    F.drawDust(ctx, trail, time);
+    F.drawFairy(ctx, now.x, now.y, time, { pose: 'fly', scale: sc, dust: 0.7 });
+    // a slow sparkle or two in the air
+    F.drawSparkles(ctx, VW * 0.2, lowLane ? 330 : 250, time * 0.5, 3, 40, 0.8);
+    F.drawSparkles(ctx, VW * 0.86, lowLane ? 300 : 360, time * 0.5 + 3, 3, 40, 0.8);
+  }
+
   window.IsabellaRender = {
-    init, resize, toWorld, drawGame, drawHUD, drawAttract, burst, fountain,
+    init, resize, toWorld, drawGame, drawHUD, drawAttract, drawFairyAttract, burst, fountain,
     get VW() { return VW; },
     setCrown(v) { crown = !!v; },
     THEMES, RAINBOW,
